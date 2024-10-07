@@ -6,25 +6,76 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggcorrplot)
+library(GGally)
+library(VIM)
+library(gridExtra)
+library(caret)
+library(leaps)
+library(boot)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+# Import the data
+df_taylor <- read.csv2('taylor_swift_discography.csv')
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+summary(df_taylor)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+df_taylor$videoclip_views <- gsub("\\.", "", df_taylor$videoclip_views)
+df_taylor$spotify_streams <- gsub("\\.", "", df_taylor$spotify_streams)
+```
+
+
+```{r}
+df_taylor$feature <- ifelse(df_taylor$feature == "No", 0, 1)
+df_taylor$track_videoclip <- ifelse(df_taylor$track_videoclip == "No", 0, 1)
+df_taylor$total_views <- as.numeric(df_taylor$videoclip_views) + as.numeric(df_taylor$spotify_streams)
+df_taylor$release_date <- as.Date(df_taylor$release_date, format = "%d/%m/%Y")
+```
+
+```{r}
+df_subset <- df_taylor[, !(colnames(df_taylor) %in% c("track_name", "ID", "spotify_global_peak", "album", "track_number", "videoclip_views","spotify_streams", "album_physical_sales", "track_number", "track_lyrics", "album_musical_genre", "album_type", "uri"))]
+```
+
+```{r}
+numeric_cols <- c("acousticness", "danceability", "energy", "instrumentalness", "liveness", "loudness", "speechiness", "tempo", "valence")
+df_subset[numeric_cols] <- lapply(df_subset[numeric_cols], as.numeric)
+```
+
+
+```{r}
+summary(df_subset)
+```
+
+```{r}
+numeric_cols <- sapply(df_subset, is.numeric)
+numeric_data <- df_subset[, numeric_cols]
+```
+```{r}
+correlation_matrix <- cor(numeric_data, use = "pairwise.complete.obs")
+
+ggcorrplot(correlation_matrix, 
+           type = "lower", 
+           lab = TRUE, 
+           lab_size = 2, 
+           colors = c("blue", "white", "red"), 
+           title = "Correlation Matrix (Lower Triangle)", 
+           ggtheme = theme_minimal(), 
+           tl.cex = 7  
+) + 
+# Adding theme for axis label size
+theme(axis.text.x = element_text(size = 7), 
+      axis.text.y = element_text(size = 7))
+```
+
+
+
+
+
