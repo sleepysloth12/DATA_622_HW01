@@ -23,7 +23,7 @@ library(boot)
 library(summarytools)
 library(corrplot)
 library(car)
-
+library(rpart)
 ```
 
 # Small Dataset (Taylor Swift Dataset)
@@ -429,6 +429,84 @@ We need 11 components to explain about 66% of the variance, and it takes 19 to g
 While we don't see extreme multicollinearity, there is some correlation among our variables. We can explain about 85% of the variance with 15 components, which is fewer than our original variables.
 
 For our logistic regression model, we should probably keep most of our features, as they all seem to contribute meaningful information about diabetes risk. However, we should still be mindful of potential multicollinearity. We might want to consider using regularization techniques like Lasso or Ridge regression in our final model to handle any correlated predictors.
+
+```{r}
+
+set.seed(622)
+
+train_split_idx=createDataPartition(diabetes_data$diabetes, p=0.7, list=FALSE)
+
+train_diab = diabetes_data[train_split_idx,]
+test_diab = diabetes_data[-train_split_idx,]
+
+control <- trainControl(method = "cv", number = 5)
+metric <- "RMSE"
+
+
+```
+
+```{r}
+set.seed(622622)
+
+fit_logistic <- train(diabetes ~ ., data = train_diab, method = "glm", family = "binomial", trControl = control)
+
+fit_logistic$resample %>%
+  arrange(Resample)
+
+fit_logistic$resample %>%
+  arrange(Resample) %>%
+  summarise(AvgRMSE = mean(RMSE))
+
+fit_logistic$resample %>%
+  arrange(Resample) %>%
+  summarise(AvgRsquared = mean(Rsquared))
+  
+
+print(fit_logistic)
+
+```
+```{r}
+predictions <- predict(fit_logistic, newdata = test_diab)
+head(predictions)
+
+```
+```{r}
+logistic_rmse <- RMSE(predictions, test_diab$diabetes)
+print(logistic_rmse)
+```
+
+
+Comparing with Decision Tree
+
+```{r}
+
+set.seed(622)
+fit_tree <- rpart(diabetes ~ ., method = 'anova', data = train_diab)
+
+plotcp(fit_tree)
+
+
+```
+```{r}
+printcp(fit_tree)
+
+
+```
+```{r}
+summary(fit_tree)
+```
+```{r}
+par(mfrow = c(1, 2)) 
+rsq.rpart(fit_tree)
+
+predictions_tree <- predict(fit_tree, newdata = test_diab)
+head(predictions_tree)
+
+tree_rmse <- RMSE(predictions_tree, test_diab$diabetes)
+print(tree_rmse)
+```
+
+
 
 # Models for Both
 
