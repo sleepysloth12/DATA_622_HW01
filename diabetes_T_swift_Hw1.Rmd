@@ -1,8 +1,10 @@
 ---
 title: "Diabetes_and_T_Swift_Data"
-author: "Jean Jimenez, Brandon Cunningham"
+author: "Jean Jimenez, Brandon Cunningham, Chafiaa Nadour"
 date: "2024-10-17"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -32,7 +34,7 @@ library(rpart)
 
 ```{r}
 # Import the data
-df_taylor <- read.csv2('taylor_swift_discography.csv')
+df_taylor <- read.csv2(url('https://raw.githubusercontent.com/sleepysloth12/DATA_622_HW01/refs/heads/main/taylor_swift_discography.csv'))
 ```
 
 ```{r}
@@ -411,7 +413,7 @@ Conducting a PCA to determine the important components
 
 ```{r}
 pca_result <- prcomp(predictors, scale. = TRUE)
-summary(pc=result)
+summary(pca_result)
 ```
 
 ```{r}
@@ -512,15 +514,18 @@ print(tree_rmse)
 
 ```{r}
 
-set.seed(123)
-split_index <- createDataPartition(large$diabetes,p=0.7,list = FALSE)
+set.seed(226)
+split_index <- createDataPartition(diabetes_data$diabetes,p=0.7,list = FALSE)
+
+
+
 
 ```
 
 ```{r}
 
-training_data <- large[split_index,]
-testing_data <- large[-split_index,]
+training_data <- diabetes_data[split_index,]
+testing_data <- diabetes_data[-split_index,]
 
 ```
 
