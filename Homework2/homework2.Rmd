@@ -19,6 +19,7 @@ library(summarytools)
 library(corrplot)
 library(car)
 library(rpart)
+library(rpart.plot)
 library(dplyr)
 ```
 
@@ -281,6 +282,7 @@ While we don't see extreme multicollinearity, there is some correlation among ou
 
 set.seed(622)
 
+
 train_split_idx=createDataPartition(diabetes_data$diabetes, p=0.7, list=FALSE)
 
 train_diab = diabetes_data[train_split_idx,]
@@ -288,8 +290,6 @@ test_diab = diabetes_data[-train_split_idx,]
 
 control <- trainControl(method = "cv", number = 5)
 metric <- "Accuracy"
-
-
 ```
 
 Decision Tree 1:
@@ -301,7 +301,7 @@ For this tree we are throwing everything into the decision tree and
 set.seed(622)
 fit_tree <- rpart(diabetes ~ ., method = 'class', data = train_diab)
 
-plotcp(fit_tree)
+rpart.plot(fit_tree, type = 4, extra = 101)
 
 
 ```
@@ -331,4 +331,47 @@ print(conf_matrix$table)
 
 
 
+
+
+
+
+In this next model, it can't find any useful splits and ends up just having a base node of 0. 
+
+This is not a good model, but it is an interesting one.
+
+```{r}
+set.seed(622)
+train_diab2 <- train_diab[c("diabetes", "bmi", "never_smoked", "former_smoker", "is_young", "heart_disease", "hypertension")]
+test_diab2 <- test_diab[c("diabetes", "bmi", "never_smoked", "former_smoker", "is_young", "heart_disease", "hypertension")]
+
+fit_tree2 <- rpart(diabetes ~ ., method = 'class', data = train_diab2)
+
+rpart.plot(fit_tree2, type = 4, extra = 101)
+```
+
+
+```{r}
+printcp(fit_tree2)
+```
+```{r}
+summary(fit_tree2)
+```
+```{r}
+par(mfrow = c(1, 2)) 
+rsq.rpart(fit_tree2)
+
+predictions_tree <- predict(fit_tree2, newdata = test_diab2)
+head(predictions_tree)
+
+accuracy <- mean(predictions_tree == test_diab2$diabetes)
+print(accuracy)
+```
+
+```{r}
+test_diab$diabetes <- as.factor(test_diab2$diabetes) 
+predictions_tree <- predict(fit_tree2, newdata = test_diab2, type = "class")
+conf_matrix <- confusionMatrix(predictions_tree, test_diab2$diabetes)
+
+print(conf_matrix$table)
+```
 
