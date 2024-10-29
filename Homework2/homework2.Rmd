@@ -277,7 +277,6 @@ We need 11 components to explain about 66% of the variance, and it takes 19 to g
 
 While we don't see extreme multicollinearity, there is some correlation among our variables. We can explain about 85% of the variance with 15 components, which is fewer than our original variables.
 
-
 ```{r}
 
 set.seed(622)
@@ -294,7 +293,7 @@ metric <- "Accuracy"
 
 Decision Tree 1:
 
-For this tree we are throwing everything into the decision tree and 
+For this tree we are throwing everything into the decision tree and
 
 ```{r}
 
@@ -305,12 +304,15 @@ rpart.plot(fit_tree, type = 4, extra = 101)
 
 
 ```
+
 ```{r}
 printcp(fit_tree)
 ```
+
 ```{r}
 summary(fit_tree)
 ```
+
 ```{r}
 par(mfrow = c(1, 2)) 
 rsq.rpart(fit_tree)
@@ -321,6 +323,7 @@ head(predictions_tree)
 accuracy <- mean(predictions_tree == test_diab$diabetes)
 print(accuracy)
 ```
+
 ```{r}
 test_diab$diabetes <- as.factor(test_diab$diabetes) 
 predictions_tree <- predict(fit_tree, newdata = test_diab, type = "class")
@@ -329,13 +332,7 @@ conf_matrix <- confusionMatrix(predictions_tree, test_diab$diabetes)
 print(conf_matrix$table)
 ```
 
-
-
-
-
-
-
-In this next model, it can't find any useful splits and ends up just having a base node of 0. 
+In this next model, it can't find any useful splits and ends up just having a base node of 0.
 
 This is not a good model, but it is an interesting one.
 
@@ -349,13 +346,14 @@ fit_tree2 <- rpart(diabetes ~ ., method = 'class', data = train_diab2)
 rpart.plot(fit_tree2, type = 4, extra = 101)
 ```
 
-
 ```{r}
 printcp(fit_tree2)
 ```
+
 ```{r}
 summary(fit_tree2)
 ```
+
 ```{r}
 par(mfrow = c(1, 2)) 
 rsq.rpart(fit_tree2)
@@ -375,3 +373,73 @@ conf_matrix <- confusionMatrix(predictions_tree, test_diab2$diabetes)
 print(conf_matrix$table)
 ```
 
+### Random Forest Classifier
+
+The random forest classifier aimed to predict the presence of diabetes using various health and demographic features in the dataset. After ensuring the target variable was treated as a categorical factor, the dataset was split into training and testing subsets, with 70% allocated to training. A simplified grid search was performed to identify the optimal number of features (`mtry`) to consider at each split, helping to balance model performance with runtime. The final model was trained using 300 trees with the best `mtry` value, yielding reliable and interpretable predictions. Evaluation on the test set showed strong classification performance, with a detailed confusion matrix highlighting accuracy, precision, recall, and F1-score. Additionally, the variable importance plot revealed the top contributing features, helping to understand which factors most strongly correlate with diabetes presence. This model offers a robust tool for diabetes prediction, leveraging key health indicators for accurate classification.
+
+```{r}
+# Load necessary libraries
+if (!require(randomForest)) install.packages("randomForest")
+library(randomForest)
+if (!require(caret)) install.packages("caret") # For additional performance metrics
+library(caret)
+
+# Ensure the response variable (diabetes) is treated as a factor
+diabetes_data$diabetes <- as.factor(diabetes_data$diabetes)
+
+# Set random seed for reproducibility
+set.seed(123)
+
+# Split the data into training and test sets
+sample_index <- sample(1:nrow(diabetes_data), size = 0.7 * nrow(diabetes_data))
+train_data <- diabetes_data[sample_index, ]
+test_data <- diabetes_data[-sample_index, ]
+
+# Simplified Hyperparameter Tuning with Manual Grid
+# We'll use a small grid for mtry and limit trees for faster results
+mtry_grid <- c(2, 4, 6)
+best_mtry <- mtry_grid[1] # Default initial mtry
+best_oob_error <- Inf
+
+for (m in mtry_grid) {
+  # Train model with fewer trees during tuning
+  rf_temp <- randomForest(
+    diabetes ~ ., 
+    data = train_data, 
+    ntree = 100, 
+    mtry = m, 
+    importance = TRUE
+  )
+  
+  # Calculate Out-of-Bag error and update best_mtry if improvement
+  oob_error <- mean(rf_temp$err.rate[, "OOB"])
+  
+  if (!is.na(oob_error) && oob_error < best_oob_error) {
+    best_oob_error <- oob_error
+    best_mtry <- m
+  }
+}
+
+# Train the final model with optimized parameters
+rf_model <- randomForest(
+  diabetes ~ ., 
+  data = train_data, 
+  ntree = 300,    # A moderate number of trees to balance performance and runtime
+  mtry = best_mtry, 
+  importance = TRUE
+)
+
+# Model summary
+print(rf_model)
+
+# Evaluate the model on the test set
+rf_predictions <- predict(rf_model, test_data)
+conf_matrix <- confusionMatrix(as.factor(rf_predictions), as.factor(test_data$diabetes))
+print(conf_matrix)
+
+# Variable Importance Plot
+varImpPlot(rf_model, main = "Variable Importance in Predicting Diabetes", n.var = 10, pch = 16, col = "blue", cex = 1.2)
+
+
+
+```
