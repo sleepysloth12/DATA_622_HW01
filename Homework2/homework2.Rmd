@@ -2,7 +2,11 @@
 title: "Data 622 Homework 2"
 author: "Brandon Cunningham, Jean Jimenez, Chafiaa Nadour, Shri Tripathi"
 date: "`r Sys.Date()`"
-output: pdf_document
+output:
+  pdf_document: 
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
 ---
 
 # Assignment Instructions
