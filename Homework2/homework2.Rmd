@@ -246,6 +246,10 @@ The target variable to predict is diabetes (binary choice whether or not patient
 
 For the sake of the assignment and to answer the questions, we will be training two decision trees and one random forrest.
 
+Decision trees are a pretty good approximation of how humans make and think about the relative inputs to their decisions. While decision trees can be simple, yet effective, they do have some drawbacks, the primary drawback is the tendency of decision trees to overfit to their training data, this comes from the tendency of decision trees to grow the number of leaf nodes with the number of features.
+
+This homework covers the advantages and disadvantages of using decision trees, in the analysis we train two decision trees on a diabetes dataset to predict diabetes, in addition, we will train a random forest classifier on a subset of features (the same as the one used on the decision trees) to predict the same outcomes.
+
 ## Correlation Matrix
 
 Before building the models, I want to run a correlation matrix to look for multicolinearity
@@ -584,3 +588,7 @@ The model's variable importance plot revealed BMI as the strongest predictor, fo
 However, while the model showed excellent sensitivity (98.38%) for identifying non-diabetic cases, it struggled with specificity (22.43%) for diabetic cases, reflecting persistent challenges with class imbalance. This addresses the article's concerns about decision tree limitations while demonstrating how ensemble methods like Random Forests can mitigate some of these issues.
 
 The differences between our three models shows both the potential and limitations of tree-based methods in medical prediction.The Random Forest's ability to capture complex variable interactions while maintaining reasonable accuracy suggests that ensemble methods, combined with careful feature selection and domain knowledge, can help overcome many of the traditional limitations of decision trees in healthcare applications. However, this must be balanced against the increased complexity and reduced interpretability compared to simple decision trees, highlighting the ongoing trade-off between model performance and practicality in clinical settings.
+
+To change the perception of decision trees, especially considering their limitations and instances where they’ve gone wrong, we can adopt various strategies when using a decision tree to address real problems, such as implementing techniques to control overfitting like pruning or ensembling. 
+
+The strengths and weaknesses of decision trees, ultimately promoting a more informed and realistic perspective on their utility past the results of the homework.
