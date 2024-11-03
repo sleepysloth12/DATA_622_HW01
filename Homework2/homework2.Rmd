@@ -313,7 +313,7 @@ metric <- "Accuracy"
 
 ## Decision Tree 1
 
-For this tree we are throwing everything into the decision tree and
+For this tree we are throwing everything into the decision tree and letting the model choose what data is most important.
 
 ```{r}
 
@@ -402,7 +402,7 @@ The model is conservative in predicting diabetes, with a very low false positive
 
 In this next model, it can't find any useful splits and ends up just having a base node of 0.
 
-This is not a good model, but it is an interesting one.
+This is not a good model, but it is an interesting one in the fact that none of the features including smoking, age, bmi, and hyptertension were strong enough predictors to be able to be used to split the tree.
 
 ```{r}
 set.seed(622)
