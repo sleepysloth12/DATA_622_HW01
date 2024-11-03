@@ -3,10 +3,10 @@ title: "Data 622 Homework 2"
 author: "Brandon Cunningham, Jean Jimenez, Chafiaa Nadour, Shri Tripathi"
 date: "`r Sys.Date()`"
 output:
-  pdf_document: 
-    latex_engine: xelatex
   html_document:
     df_print: paged
+  pdf_document: 
+    latex_engine: xelatex
 ---
 
 # Assignment Instructions
@@ -18,6 +18,7 @@ Switch variables\* to generate 2 decision trees and compare the results. Create 
 Based on real cases where desicion trees went wrong, and 'the bad & ugly' aspects of decision trees ([https://decizone.com/blog/the-good-the-bad-the-ugly-of-using-decision-trees),](https://decizone.com/blog/the-good-the-bad-the-ugly-of-using-decision-trees),) how can you change this perception when using the decision tree you created to solve a real problem?
 
 ```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE)
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(ggcorrplot)
@@ -50,7 +51,7 @@ Goal: For this dataset, we want to predict whether or not the patient will have 
 Importing:
 
 ```{r}
-diabetes_data=read.csv(url("https://raw.githubusercontent.com/sleepysloth12/DATA_622_HW01/refs/heads/main/diabetes_dataset.csv"))
+diabetes_data=read.csv(url("https://raw.githubusercontent.com/sleepysloth12/DATA_622_HW01/refs/heads/main/Homework1/diabetes_dataset.csv"))
 ```
 
 ### Exploratory Data Analysis
@@ -589,6 +590,26 @@ However, while the model showed excellent sensitivity (98.38%) for identifying n
 
 The differences between our three models shows both the potential and limitations of tree-based methods in medical prediction.The Random Forest's ability to capture complex variable interactions while maintaining reasonable accuracy suggests that ensemble methods, combined with careful feature selection and domain knowledge, can help overcome many of the traditional limitations of decision trees in healthcare applications. However, this must be balanced against the increased complexity and reduced interpretability compared to simple decision trees, highlighting the ongoing trade-off between model performance and practicality in clinical settings.
 
-To change the perception of decision trees, especially considering their limitations and instances where they’ve gone wrong, we can adopt various strategies when using a decision tree to address real problems, such as implementing techniques to control overfitting like pruning or ensembling. 
+To change the perception of decision trees, especially considering their limitations and instances where they’ve gone wrong, we can adopt various strategies when using a decision tree to address real problems, such as implementing techniques to control overfitting like pruning or ensembling.
 
 The strengths and weaknesses of decision trees, ultimately promoting a more informed and realistic perspective on their utility past the results of the homework.
+
+# TLDR
+
+Decision trees are a popular choice for their intuitive nature and straightforward visualization of data-driven decisions. However, as discussed in "The GOOD, The BAD & The UGLY of Using Decision Trees," these models come with significant drawbacks, particularly in complex fields like healthcare. My analysis explores both the strengths and limitations of decision trees in predicting diabetes risk, with a comparative assessment of two decision tree models and a random forest classifier.
+
+## Insights from Our Decision Trees:
+
+ Our first decision tree, incorporating biomarkers like A1C levels, demonstrated a decent predictive performance with an 89.3% accuracy rate. The splits were aligned with clinical markers, giving the model interpretability and relevance in a healthcare context. However, this tree still exhibited notable weaknesses: a bias toward the majority class (non-diabetic) and a limited sensitivity of only 17.3% for detecting positive cases. This reflects one of the “bad” aspects of decision trees as mentioned in the blog, specifically the struggle with class imbalance. In contrast, our second decision tree, built with insufficient features, devolved into a one-node "stump," only predicting the majority class. This striking example underscored the “ugly” side of decision trees, highlighting their vulnerability to poor feature selection and the subjectivity involved in model construction. The comparison emphasizes the importance of selecting clinically meaningful features and employing domain expertise to optimize model performance.
+
+##Improving Model Robustness:
+
+To address these limitations, we implemented a random forest classifier. By averaging the results of 300 trees and using four features per split, the model achieved an accuracy of 89.46%, slightly outperforming our first tree. The variable importance analysis identified BMI and A1C-related features as the strongest predictors, aligning well with established medical knowledge. However, the model still struggled with class imbalance, achieving high sensitivity (98.38%) for non-diabetic cases but only 22.43% specificity for diabetic cases. This result reflects persistent challenges in using tree-based methods for imbalanced medical datasets.
+
+##Strategies to Enhance Decision Trees:
+
+The key takeaways from this analysis align with the blog’s insights on mitigating decision tree shortcomings. We can adopt strategies such as class balancing techniques to improve sensitivity and ensemble methods, like random forests, to reduce variance and improve robustness. Additionally, methods like pruning and cross-validation are crucial to control overfitting, while careful feature selection ensures that the model is grounded in clinical relevance. Our analysis highlights the trade-offs between model performance and interpretability. While the random forest captures complex variable interactions and improves accuracy, it does so at the cost of reduced transparency compared to simple decision trees. This trade-off is significant in healthcare, where model explainability is often critical.
+
+## Conclusion:
+
+In conclusion, decision trees have valuable applications but require thoughtful implementation to avoid pitfalls. By using ensemble methods, incorporating domain expertise, and applying techniques to manage overfitting and class imbalance, we can leverage their strengths while mitigating their limitations. This approach promotes a more balanced and informed perspective on decision tree models in medical prediction, addressing the concerns raised in the DeciZone blog while showcasing their potential for real-world healthcare applications.
