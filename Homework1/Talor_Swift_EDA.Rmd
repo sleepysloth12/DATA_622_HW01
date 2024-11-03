@@ -1,0 +1,143 @@
+---
+title: "Taalyor_Swift_EDA"
+author: "Brandon Cunningham"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(ggcorrplot)
+library(GGally)
+library(VIM)
+library(gridExtra)
+library(caret)
+library(leaps)
+library(boot)
+```
+
+
+```{r}
+# Import the data
+df_taylor <- read.csv2('taylor_swift_discography.csv')
+```
+
+```{r}
+summary(df_taylor)
+```
+
+```{r}
+df_taylor$videoclip_views <- gsub("\\.", "", df_taylor$videoclip_views)
+df_taylor$spotify_streams <- gsub("\\.", "", df_taylor$spotify_streams)
+```
+
+
+```{r}
+df_taylor$feature <- ifelse(df_taylor$feature == "No", 0, 1)
+df_taylor$track_videoclip <- ifelse(df_taylor$track_videoclip == "No", 0, 1)
+df_taylor$total_views <- as.numeric(df_taylor$videoclip_views) + as.numeric(df_taylor$spotify_streams)
+df_taylor$release_date <- as.Date(df_taylor$release_date, format = "%d/%m/%Y")
+```
+
+```{r}
+df_subset <- df_taylor[, !(colnames(df_taylor) %in% c("track_name", "ID", "spotify_global_peak", "album", "track_number", "videoclip_views","spotify_streams", "album_physical_sales", "track_number", "track_lyrics", "album_musical_genre", "album_type", "uri"))]
+```
+
+```{r}
+numeric_cols <- c("acousticness", "danceability", "energy", "instrumentalness", "liveness", "loudness", "speechiness", "tempo", "valence")
+df_subset[numeric_cols] <- lapply(df_subset[numeric_cols], as.numeric)
+```
+
+
+```{r}
+summary(df_subset)
+```
+
+```{r}
+numeric_cols <- sapply(df_subset, is.numeric)
+numeric_data <- df_subset[, numeric_cols]
+```
+```{r}
+correlation_matrix <- cor(numeric_data, use = "pairwise.complete.obs")
+
+ggcorrplot(correlation_matrix, 
+           type = "lower", 
+           lab = TRUE, 
+           lab_size = 2, 
+           colors = c("blue", "white", "red"), 
+           title = "Correlation Matrix (Lower Triangle)", 
+           ggtheme = theme_minimal(), 
+           tl.cex = 7  
+) + 
+# Adding theme for axis label size
+theme(axis.text.x = element_text(size = 7), 
+      axis.text.y = element_text(size = 7))
+```
+
+```{r}
+
+numeric_data <- df_subset[, numeric_cols | names(df_subset) == 'release_date']
+# Pairs plot
+
+ggpairs(numeric_data, 
+        title = "Pairs Plot of Selected Variables",
+        upper = list(continuous = wrap("cor", size = 2)),  
+        lower = list(continuous = wrap("points", size = 0.02)),  
+        diag = list(continuous = wrap("barDiag", fill = "blue")),  
+        labeller = label_wrap_gen(width = 10) 
+) + 
+# Adjust axis text and label size
+theme(axis.text.x = element_text(size = 3), 
+      axis.text.y = element_text(size = 3),
+      strip.text = element_text(size = 3)) 
+```
+```{r}
+non_numeric_cols <- sapply(df_subset, function(col) !is.numeric(col) && !inherits(col, 'Date'))
+
+for (col_name in names(df_subset)[non_numeric_cols]) {
+  temp_table <- aggregate(total_views ~ df_subset[[col_name]], data = df_subset, FUN = median)
+  colnames(temp_table) <- c("Category", "TotalViews")
+  
+  bar_positions <- barplot(temp_table$TotalViews,
+                           names.arg = rep("", length(temp_table$Category)),
+                           main = paste("Median Total Views by", col_name),
+                           xlab = col_name,
+                           ylab = "Median Views",
+                           col = 'lightblue')
+
+  text(x = bar_positions, 
+       y = par("usr")[3] - 0.05 * max(temp_table$TotalViews), 
+       labels = temp_table$Category, 
+       srt = 30, 
+       adj = 1, 
+       xpd = TRUE, 
+       cex = 0.8)
+}
+
+```
+
+```{r}
+plot(jitter(as.numeric(df_subset$release_date)), 
+     df_subset$total_views,
+     xlab = "Release Date",
+     ylab = "Total Views",
+     main = "Scatter Plot of Total Views by Release Date",
+     pch = 19, 
+     col = 'blue',
+     xaxt = 'n')
+
+date_breaks <- seq(min(df_subset$release_date), max(df_subset$release_date), by = "1 year")
+axis(1, at = as.numeric(date_breaks), labels = FALSE)
+
+text(x = as.numeric(date_breaks), 
+     y = par("usr")[3] - 0.05 * (par("usr")[4] - par("usr")[3]), 
+     labels = format(date_breaks, "%Y-%m-%d"), 
+     srt = 45,
+     adj = 1, 
+     xpd = TRUE, 
+     cex = 0.7)
+```
+
+
+

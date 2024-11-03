@@ -1,2 +1,0 @@
-# DATA_622_HW01
-CUNY SPS Data 622 HW #1 by 

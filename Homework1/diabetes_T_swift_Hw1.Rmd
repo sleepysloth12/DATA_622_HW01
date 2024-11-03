@@ -1,0 +1,612 @@
+---
+title: "Diabetes_and_T_Swift_Data"
+author: "Jean Jimenez, Brandon Cunningham, Chafiaa Nadour"
+date: "2024-10-17"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data 622 HW1
+
+```{r}
+library(tidyverse)
+library(ggcorrplot)
+library(GGally)
+library(VIM)
+library(gridExtra)
+library(caret)
+library(leaps)
+library(boot)
+library(summarytools)
+library(corrplot)
+library(car)
+library(rpart)
+```
+
+# Small Dataset (Taylor Swift Dataset)
+
+## Importing and Processing
+
+```{r}
+# Import the data
+df_taylor <- read.csv2(url('https://raw.githubusercontent.com/sleepysloth12/DATA_622_HW01/refs/heads/main/taylor_swift_discography.csv'))
+```
+
+```{r}
+summary(df_taylor)
+```
+
+```{r}
+df_taylor$videoclip_views <- gsub("\\.", "", df_taylor$videoclip_views)
+df_taylor$spotify_streams <- gsub("\\.", "", df_taylor$spotify_streams)
+```
+
+```{r}
+df_taylor$feature <- ifelse(df_taylor$feature == "No", 0, 1)
+df_taylor$track_videoclip <- ifelse(df_taylor$track_videoclip == "No", 0, 1)
+df_taylor$total_views <- as.numeric(df_taylor$videoclip_views) + as.numeric(df_taylor$spotify_streams)
+df_taylor$release_date <- as.Date(df_taylor$release_date, format = "%d/%m/%Y")
+```
+
+```{r}
+df_subset <- df_taylor[, !(colnames(df_taylor) %in% c("track_name", "ID", "spotify_global_peak", "album", "track_number", "videoclip_views","spotify_streams", "album_physical_sales", "track_number", "track_lyrics", "album_musical_genre", "album_type", "uri"))]
+```
+
+```{r}
+numeric_cols <- c("acousticness", "danceability", "energy", "instrumentalness", "liveness", "loudness", "speechiness", "tempo", "valence")
+df_subset[numeric_cols] <- lapply(df_subset[numeric_cols], as.numeric)
+```
+
+## EDA
+
+```{r}
+summary(df_subset)
+```
+
+```{r}
+numeric_cols <- sapply(df_subset, is.numeric)
+numeric_data <- df_subset[, numeric_cols]
+```
+
+```{r}
+correlation_matrix <- cor(numeric_data, use = "pairwise.complete.obs")
+
+ggcorrplot(correlation_matrix, 
+           type = "lower", 
+           lab = TRUE, 
+           lab_size = 2, 
+           colors = c("blue", "white", "red"), 
+           title = "Correlation Matrix (Lower Triangle)", 
+           ggtheme = theme_minimal(), 
+           tl.cex = 7  
+) + 
+# Adding theme for axis label size
+theme(axis.text.x = element_text(size = 7), 
+      axis.text.y = element_text(size = 7))
+```
+
+```{r}
+
+numeric_data <- df_subset[, numeric_cols | names(df_subset) == 'release_date']
+# Pairs plot
+
+ggpairs(numeric_data, 
+        title = "Pairs Plot of Selected Variables",
+        upper = list(continuous = wrap("cor", size = 2)),  
+        lower = list(continuous = wrap("points", size = 0.02)),  
+        diag = list(continuous = wrap("barDiag", fill = "blue")),  
+        labeller = label_wrap_gen(width = 10) 
+) + 
+# Adjust axis text and label size
+theme(axis.text.x = element_text(size = 3), 
+      axis.text.y = element_text(size = 3),
+      strip.text = element_text(size = 3)) 
+```
+
+```{r}
+non_numeric_cols <- sapply(df_subset, function(col) !is.numeric(col) && !inherits(col, 'Date'))
+
+for (col_name in names(df_subset)[non_numeric_cols]) {
+  temp_table <- aggregate(total_views ~ df_subset[[col_name]], data = df_subset, FUN = median)
+  colnames(temp_table) <- c("Category", "TotalViews")
+  
+  bar_positions <- barplot(temp_table$TotalViews,
+                           names.arg = rep("", length(temp_table$Category)),
+                           main = paste("Median Total Views by", col_name),
+                           xlab = col_name,
+                           ylab = "Median Views",
+                           col = 'lightblue')
+
+  text(x = bar_positions, 
+       y = par("usr")[3] - 0.05 * max(temp_table$TotalViews), 
+       labels = temp_table$Category, 
+       srt = 30, 
+       adj = 1, 
+       xpd = TRUE, 
+       cex = 0.8)
+}
+
+```
+
+```{r}
+plot(jitter(as.numeric(df_subset$release_date)), 
+     df_subset$total_views,
+     xlab = "Release Date",
+     ylab = "Total Views",
+     main = "Scatter Plot of Total Views by Release Date",
+     pch = 19, 
+     col = 'blue',
+     xaxt = 'n')
+
+date_breaks <- seq(min(df_subset$release_date), max(df_subset$release_date), by = "1 year")
+axis(1, at = as.numeric(date_breaks), labels = FALSE)
+
+text(x = as.numeric(date_breaks), 
+     y = par("usr")[3] - 0.05 * (par("usr")[4] - par("usr")[3]), 
+     labels = format(date_breaks, "%Y-%m-%d"), 
+     srt = 45,
+     adj = 1, 
+     xpd = TRUE, 
+     cex = 0.7)
+```
+
+# Large Datset (Diabetes Data)
+
+For our large dataset, we will use the diabetes dataset from kaggle.
+
+This dataset has 100k clinical records of diabetes for health analytic purposes.
+
+[Link to Dataset](https://www.kaggle.com/datasets/priyamchoksi/100000-diabetes-clinical-dataset?resource=download)
+
+Goal: For this dataset, we want to predict whether or not the patient will have diabetes.
+
+Importing:
+
+```{r}
+
+diabetes_data=read.csv(url("https://raw.githubusercontent.com/sleepysloth12/DATA_622_HW01/refs/heads/main/diabetes_dataset.csv"))
+
+
+
+```
+
+## Exploratory Data Analysis
+
+First, we will start off by looking at each column/variable and seeing its distribution/ summary statistics.
+
+```{r}
+names(diabetes_data)
+
+print(dfSummary(diabetes_data), method = "browser")
+
+```
+
+The `dfsummary()` function prints out the summary statistics, data type, and distribution of each column.
+
+The data set has no missing data. There are 100k rows and 16 columns.
+
+The column of interest, labeled `diabetes` is what we want to predict. It is an integer, 0 or 1, indicating if the patient has diabetes or not. In the current dataset, 91% of the patients have no diabetes and 8.5% of the patients have diabetes.
+
+In order to build a predictive model, we must first go column by column and clean up the features a little bit to make this more accurate/applicable to healthcare data.
+
+### Data Cleaning
+
+#### Year
+
+The first column is year. The dataset is timeseries data, collected from the years 2015-2022. However, each year has different numbers of observations. There is no way of knowing if this is longtitudnal data (one patient visited multiple year) due to the lack of unique patient identifier field. I think we can completely disregard and forget about this column.
+
+```{r}
+diabetes_data = diabetes_data %>%
+  select(-year)
+```
+
+#### Gender
+
+Next is gender. Gender is pretty even split, with \~60% being female and \~40% being male. There is an insignificant amount of people that answered "other" (less than 1%).
+
+I'm going ahead and going to filter out other. Also, I am going to change the label to`is_female` so the choice is binary.
+
+```{r}
+
+diabetes_data = diabetes_data %>%
+  filter(gender == "Female"| gender== "Male")%>%
+  mutate(is_female=ifelse(gender == "Female",1,0))%>%
+  select(-gender)
+```
+
+#### Age
+
+Next is age. Mean age is 41.9 years old, with a standard deviation of +/-22.5 years old.
+
+Max age is 80.
+
+Minimum recorded age is 0.08. This might be an outlier. Therefore, lets visualize this distribution in both box plot and bar plot.
+
+```{r}
+ggplot(diabetes_data, aes(x = age)) +
+  geom_histogram(binwidth = 5, color = "black", fill = "lightblue") +
+  labs(title = "Distribution of Age", x = "Age", y = "Count") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(diabetes_data, aes(y = age)) +
+  geom_boxplot(fill = "lightblue", color = "black") +
+  labs(title = "Boxplot of Age", y = "Age") +
+  theme_minimal()
+
+```
+
+Seems like the minimum age is an outlier. In medical research, we tend to separate adult populations from pediatric populations so lets go ahead and do that here. Lets only look at 18+.
+
+In terms of the age distribution, it looks relatively normal. Diabetes incidence seem to increase as you get closer to middle age, then decrease. There is a spike at 80 years old.
+
+I am going to bin age/ convert it into different categories:
+
+`is_young` = Age 18-35
+
+`is_middle_age` = Age 36-64
+
+`is_old` = Age 65+
+
+```{r}
+
+diabetes_data = diabetes_data %>%
+  filter(age>=18)%>%
+  mutate(is_young=ifelse(age>=18 & age <=35, 1,0),
+         is_middle_age=ifelse(age>35 & age<65 , 1 , 0),
+         is_old=ifelse(age>65,1,0))%>%
+  select(-age)
+
+```
+
+#### State
+
+```{r}
+length(unique(diabetes_data$location))
+```
+
+For the location column, there are 55 different locations, corresponding to the 50 different states and territory.
+
+Location is important for diabetes prediction. Some areas are probably more likely to develop diabetes than others. Like age, I want to create categories and bin them based on the location. Then, will create dummy variables.
+
+```{r}
+diabetes_data = diabetes_data %>%
+  mutate(
+    
+    is_new_england = if_else(location %in% c("Connecticut", "Maine", "Massachusetts", 
+                                          "New Hampshire", "Rhode Island", "Vermont"), 1, 0),
+
+    
+    is_south = if_else(location %in% c("Alabama", "Arkansas", "Delaware", "Florida", "Georgia", 
+                                    "Kentucky", "Louisiana", "Maryland", "Mississippi", 
+                                    "North Carolina", "Oklahoma", "South Carolina", 
+                                    "Tennessee", "Texas", "Virginia", "West Virginia"), 1, 0),
+
+    
+    is_midwest = if_else(location %in% c("Illinois", "Indiana", "Iowa", "Kansas", "Michigan", 
+                                      "Minnesota", "Missouri", "Nebraska", "North Dakota", 
+                                      "Ohio", "South Dakota", "Wisconsin"), 1, 0),
+
+    
+    is_west = if_else(location %in% c("Alaska", "Arizona", "California", "Colorado", "Hawaii", 
+                                   "Idaho", "Montana", "Nevada", "New Mexico", "Oregon", 
+                                   "Utah", "Washington", "Wyoming"), 1, 0),
+
+    
+    is_northeast = if_else(location %in% c("New Jersey", "New York", "Pennsylvania"), 1, 0),
+
+    
+    is_territories = if_else(location %in% c("Guam", "Puerto Rico", "Virgin Islands", 
+                                          "District of Columbia", "United States"), 1, 0)
+  )%>%
+  select(-location)
+```
+
+#### Race, Ethnicity, Hypertension, & Heart Disease
+
+Race and ethnicity is already binned and with their individual dummy variables. Race and ethnicity are both factors that influence diabetes so will leave these columns untouched.
+
+Same with the columns of hypertension and heart disease.
+
+#### Smoking History
+
+There are currently 6 categories/ choices patients could respond when asked about smoking history:
+
+```{r}
+unique(diabetes_data$smoking_history)
+```
+
+```{r}
+ggplot(diabetes_data, aes(x = smoking_history)) +
+  geom_bar(fill = "lightblue", color = "black") +
+  labs(title = "Distribution of Smoking History", x = "Smoking History", y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
+The biggest group is Never smoked accounting for 35% of the data.
+
+There is a category, 'ever' which is 'Never' mislabeled. Will fix this. Once combined, never smoked will account for40% of the data.
+
+The second biggest is 'No info' with near 35% of the data. Since the people in 'No info' may or may not be smokers, if we leave this category in it might make our predictions inaccurate. We want to capture how smoking can influence diabetes, therefore we ill remove this group.
+
+Also, the 'not current' and 'former' group can be combined.
+
+```{r}
+diabetes_data = diabetes_data %>%
+  filter(smoking_history!="No Info")%>%
+  mutate(never_smoked=ifelse(smoking_history %in% c("ever","never"),1,0),
+         former_smoker=ifelse(smoking_history %in% c("former","not current"),1,0),
+         current_smoker=ifelse(smoking_history=="current",1,0)) %>%
+  select(-smoking_history)
+```
+
+#### Biomarker Columns
+
+The distribution of BMI is normal. It is numeric and continuous. We are leaving this as is.
+
+The hbA1c_level biomarker, although numeric, has 18 unique values. In healthcare, this biomarker is usually used to determine diabetes. We will bin this biomarker for the following categories:
+
+A1c \< 5.7% –\> Normal A1C
+
+A1c between 5.7-6.4 % –\> PreDiabetes
+
+A1C over 6.5% –\> diabetes
+
+Although, correlation analysis is needed. There might be multicollinearity between these biomarker variables.
+
+I say this because blood glucose variable and A1c directly related to each other.
+
+Actually going to remove blood glucose because having that and A1C is repetitive/ multicollinearity.
+
+```{r}
+diabetes_data = diabetes_data %>%
+  mutate(normal_a1c=ifelse(hbA1c_level<5.7,1,0),
+         prediabetic_a1c=ifelse(hbA1c_level>=5.7 & hbA1c_level <= 6.4,1,0),
+         diabetic_a1c=ifelse(hbA1c_level>6.4,1,0))%>%
+  select(-c(hbA1c_level,blood_glucose_level))
+```
+
+## Model Selection
+
+```{r}
+print(dfSummary(diabetes_data), method = "browser")
+```
+
+Now that our dataset is clean, we can discuss what model we want to use.
+
+The target variable to predict is diabetes (binary choice whether or not patient will have diabetes).
+
+I think the best algorithm to use in this case is logistic regression. Logistic regression provides interpretable results. The coefficients in the model can be easily interpreted as the change in log-odds of having diabetes for a one-unit change in the predictor, holding other variables constant. This interpretability is important in healthcare.
+
+### Correlation Matrix
+
+Before begining the logistic regression model, I want to run a correlation matrix to look for multicolinearity
+
+```{r}
+predictors <- diabetes_data %>% 
+  select(-diabetes) 
+
+cor_matrix <- cor(predictors)
+
+high_cor <- findCorrelation(cor_matrix, cutoff = 0.7, verbose = TRUE)
+
+cat("Highly correlated variables:", paste(names(predictors)[high_cor], collapse = ", "), "\n")
+```
+
+```{r}
+corrplot(cor_matrix, method = "color", type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+```
+
+There is some multicollinearity
+
+### Principal Component Analysis
+
+Conducting a PCA to determine the important components
+
+```{r}
+pca_result <- prcomp(predictors, scale. = TRUE)
+summary(pca_result)
+```
+
+```{r}
+plot(cumsum(pca_result$sdev^2 / sum(pca_result$sdev^2)), 
+     type = "b", 
+     xlab = "Number of Components", 
+     ylab = "Cumulative Proportion of Variance Explained",
+     main = "PCA Cumulative Variance Explained")
+```
+
+Our first principal component only accounts for about 8.16% of the total variance. That's not a lot. It means no single factor dominates in predicting diabetes. This makes sense given the complex nature of the disease and the variety of factors we've included in our dataset.
+
+We need 11 components to explain about 66% of the variance, and it takes 19 to get to nearly 100%. Looking at our cumulative variance plot, we can see this gradual climb. The fact that we need so many components to explain most of the variance suggests we shouldn't try to oversimplify our model. Most of our variables are contributing unique information about diabetes risk.
+
+While we don't see extreme multicollinearity, there is some correlation among our variables. We can explain about 85% of the variance with 15 components, which is fewer than our original variables.
+
+For our logistic regression model, we should probably keep most of our features, as they all seem to contribute meaningful information about diabetes risk. However, we should still be mindful of potential multicollinearity. We might want to consider using regularization techniques like Lasso or Ridge regression in our final model to handle any correlated predictors.
+
+```{r}
+
+set.seed(622)
+
+train_split_idx=createDataPartition(diabetes_data$diabetes, p=0.7, list=FALSE)
+
+train_diab = diabetes_data[train_split_idx,]
+test_diab = diabetes_data[-train_split_idx,]
+
+control <- trainControl(method = "cv", number = 5)
+metric <- "RMSE"
+
+
+```
+
+```{r}
+set.seed(622622)
+
+fit_logistic <- train(diabetes ~ ., data = train_diab, method = "glm", family = "binomial", trControl = control)
+
+fit_logistic$resample %>%
+  arrange(Resample)
+
+fit_logistic$resample %>%
+  arrange(Resample) %>%
+  summarise(AvgRMSE = mean(RMSE))
+
+fit_logistic$resample %>%
+  arrange(Resample) %>%
+  summarise(AvgRsquared = mean(Rsquared))
+  
+
+print(fit_logistic)
+
+```
+```{r}
+predictions <- predict(fit_logistic, newdata = test_diab)
+head(predictions)
+
+```
+```{r}
+logistic_rmse <- RMSE(predictions, test_diab$diabetes)
+print(logistic_rmse)
+```
+
+
+Comparing with Decision Tree
+
+```{r}
+
+set.seed(622)
+fit_tree <- rpart(diabetes ~ ., method = 'anova', data = train_diab)
+
+plotcp(fit_tree)
+
+
+```
+```{r}
+printcp(fit_tree)
+
+
+```
+```{r}
+summary(fit_tree)
+```
+```{r}
+par(mfrow = c(1, 2)) 
+rsq.rpart(fit_tree)
+
+predictions_tree <- predict(fit_tree, newdata = test_diab)
+head(predictions_tree)
+
+tree_rmse <- RMSE(predictions_tree, test_diab$diabetes)
+print(tree_rmse)
+```
+
+
+
+# Models for Both
+
+```{r}
+
+set.seed(226)
+split_index <- createDataPartition(diabetes_data$diabetes,p=0.7,list = FALSE)
+
+
+
+
+```
+
+```{r}
+
+training_data <- diabetes_data[split_index,]
+testing_data <- diabetes_data[-split_index,]
+
+```
+
+```{r}
+
+set.seed(5)
+control <- trainControl(method = "cv",number = 5)
+metric = "rmse"
+set.seed(1234)
+fit.lm <- train(diabetes~.,data = training_data,method = "lm",trControl = control)
+
+```
+
+```{r}
+fit.lm$resample %>%
+  arrange(Resample)
+```
+
+```{r}
+fit.lm$resample %>%
+  arrange(Resample) %>%
+  summarise(AVGRMSE  = mean(RMSE))
+```
+
+```{r}
+
+fit.lm$resample %>%
+  arrange(Resample) %>%
+  summarise(AvgRsquared  = mean(Rsquared))
+```
+
+```{r}
+print(fit.lm)
+```
+
+```{r}
+predictions <- predict(fit.lm,newdata = testing_data)
+head(predictions)
+```
+
+```{r}
+
+library(rpart)
+set.seed(3456)
+fit <- rpart(diabetes~.,,method = 'anova',data = training_data)
+```
+
+```{r}
+plotcp(fit)
+
+```
+
+```{r}
+printcp(fit)
+```
+
+```{r}
+summary(fit)
+```
+
+```{r}
+
+par(mfrow=c(1,2)) # two plots on one page
+rsq.rpart(fit) 
+```
+
+```{r}
+# create attractive postcript plot of tree
+plot(fit, uniform=TRUE,
+   main="Regression Tree for Mileage ")
+text(fit, use.n=TRUE, all=TRUE, cex=.8)
+```
+
+```{r}
+post(fit, title = "Regression Tree for diabetes ")
+# Create predictions using the decision tree..
+
+predictions1 <- predict(fit,newdata = testing_data)
+head(predictions1)
+```
+
+```{r}
+RMSE(predictions1,testing_data$diabetes)
+```
