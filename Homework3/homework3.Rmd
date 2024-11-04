@@ -50,7 +50,7 @@ Goal: For this dataset, we want to predict whether or not the patient will have 
 Importing:
 
 ```{r}
-diabetes_data=read.csv(url("https://raw.githubusercontent.com/sleepysloth12/DATA_622_HW01/refs/heads/main/diabetes_dataset.csv"))
+diabetes_data=read.csv(url("https://raw.githubusercontent.com/sleepysloth12/DATA_622_HW01/refs/heads/main/Homework3/diabetes_dataset.csv"))
 ```
 
 ### Exploratory Data Analysis
@@ -295,15 +295,28 @@ We need 11 components to explain about 66% of the variance, and it takes 19 to g
 
 While we don't see extreme multicollinearity, there is some correlation among our variables. We can explain about 85% of the variance with 15 components, which is fewer than our original variables.
 
+
+Here I am getting a subset to use for training as these models are compute intensive
+```{r}
+set.seed(622)
+
+subset_size <- 0.1 * nrow(diabetes_data)
+subset_idx <- sample(1:nrow(diabetes_data), subset_size)
+
+diabetes_data_subset <- diabetes_data[subset_idx, ]
+```
+
+
 ```{r}
 
 set.seed(622)
 
+diabetes_data_subset$diabetes <- as.factor(diabetes_data_subset$diabetes)
 
-train_split_idx=createDataPartition(diabetes_data$diabetes, p=0.7, list=FALSE)
+train_split_idx=createDataPartition(diabetes_data_subset$diabetes, p=0.7, list=FALSE)
 
-train_diab = diabetes_data[train_split_idx,]
-test_diab = diabetes_data[-train_split_idx,]
+train_diab = diabetes_data_subset[train_split_idx,]
+test_diab = diabetes_data_subset[-train_split_idx,]
 
 control <- trainControl(method = "cv", number = 5)
 metric <- "Accuracy"
@@ -311,6 +324,146 @@ metric <- "Accuracy"
 
 # Models
 
+## SVM Model 1
+
+
+```{r}
+set.seed(622)
+
+svm_model1 <- train(diabetes ~ ., 
+                    data = train_diab, 
+                    method = "svmRadial", 
+                    metric = metric, 
+                    trControl = control,
+                    tuneLength = 10)
+
+print(svm_model1)
+
+model1_predictions <- predict(svm_model1, newdata = test_diab)
+
+conf_matrix <- confusionMatrix(model1_predictions, test_diab$diabetes)
+
+print(conf_matrix)
+```
+
+```{r}
+set.seed(622)
+
+svm_model2 <- train(diabetes ~ ., 
+                    data = train_diab, 
+                    method = "svmPoly", 
+                    metric = metric, 
+                    trControl = control)
+
+print(svm_model2)
+
+model2_predictions <- predict(svm_model2, newdata = test_diab)
+
+conf_matrix <- confusionMatrix(model2_predictions, test_diab$diabetes)
+
+print(conf_matrix)
+```
+
+
+```{r}
+set.seed(622)
+
+svm_model3 <- train(diabetes ~ ., 
+                    data = train_diab, 
+                    method = "svmLinear", 
+                    metric = metric, 
+                    trControl = control)
+
+print(svm_model3)
+
+model3_predictions <- predict(svm_model3, newdata = test_diab)
+
+conf_matrix <- confusionMatrix(model3_predictions, test_diab$diabetes)
+
+print(conf_matrix)
+```
+
+```{r}
+set.seed(622)
+
+#Radial with custom search grid
+svm_grid <- expand.grid(C = c(0.1, 1, 5, 10), 
+                        sigma = c(0.005, 0.01, 0.05, 0.1))
+
+svm_model4 <- train(diabetes ~ ., 
+                    data = train_diab, 
+                    method = "svmRadial", 
+                    metric = metric, 
+                    trControl = control,
+                    tuneGrid = svm_grid)
+
+print(svm_model4)
+
+model4_predictions <- predict(svm_model4, newdata = test_diab)
+
+conf_matrix <- confusionMatrix(model4_predictions, test_diab$diabetes)
+
+print(conf_matrix)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(pROC)
+
+# Model 1: Radial with custom tune length
+roc_model1 <- roc(as.numeric(test_diab$diabetes), as.numeric(model1_predictions))
+auc_model1 <- auc(roc_model1)
+
+# Model 2: Polynomial
+roc_model2 <- roc(as.numeric(test_diab$diabetes), as.numeric(model2_predictions))
+auc_model2 <- auc(roc_model2)
+
+# Model 3: Linear
+roc_model3 <- roc(as.numeric(test_diab$diabetes), as.numeric(model3_predictions))
+auc_model3 <- auc(roc_model3)
+
+# Model 4: Radial with Custom Grid
+roc_model4 <- roc(as.numeric(test_diab$diabetes), as.numeric(model4_predictions))
+auc_model4 <- auc(roc_model4)
+
+# Plot ROC curves
+plot(roc_model1, col = "#1b9e77", lwd = 2, main = "ROC Curves for Model Comparison")
+plot(roc_model2, col = "#d95f02", lwd = 2, add = TRUE)
+plot(roc_model3, col = "#7570b3", lwd = 2, add = TRUE)
+plot(roc_model4, col = "#e7298a", lwd = 2, add = TRUE)
+
+# Add legend
+legend("bottomright", legend = c(
+  paste("Model 1: Radial (AUC =", round(auc_model1, 3), ")"),
+  paste("Model 2: Polynomial (AUC =", round(auc_model2, 3), ")"),
+  paste("Model 3: Linear (AUC =", round(auc_model3, 3), ")"),
+  paste("Model 4: Radial With Custom Grid (AUC =", round(auc_model4, 3), ")")
+), col = c("#1b9e77", "#d95f02", "#7570b3", "#e7298a"), lwd = 2)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Keeping Decision trees for reference for now
 ## Decision Tree 1
 
 For this tree we are throwing everything into the decision tree and letting the model choose what data is most important.
