@@ -10,12 +10,13 @@ output:
 ---
 
 # Assignment Instructions
+Perform an analysis of the dataset(s) used in Homework #2 using the SVM algorithm. Compare the results with the results from previous homework.
 
-Based on the latest topics presented, choose a dataset of your choice and create a Decision Tree where you can solve a classification problem and predict the outcome of a particular feature or detail of the data used.
+Three Articles on SVM vs Decision Tree on Diabetes:
+- https://arxiv.org/abs/1902.10028
+- https://american-cse.org/sites/csci2020proc/pdfs/CSCI2020-6SccvdzjqC7bKupZxFmCoA/762400a527/762400a527.pdf
+- https://ieeexplore.ieee.org/document/10199539
 
-Switch variables\* to generate 2 decision trees and compare the results. Create a random forest and analyze the results.
-
-Based on real cases where desicion trees went wrong, and 'the bad & ugly' aspects of decision trees ([https://decizone.com/blog/the-good-the-bad-the-ugly-of-using-decision-trees),](https://decizone.com/blog/the-good-the-bad-the-ugly-of-using-decision-trees),) how can you change this perception when using the decision tree you created to solve a real problem?
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -335,7 +336,7 @@ svm_model1 <- train(diabetes ~ .,
                     method = "svmRadial", 
                     metric = metric, 
                     trControl = control,
-                    tuneLength = 10)
+                    tuneLength = 15)
 
 print(svm_model1)
 
