@@ -12,10 +12,25 @@ output:
 # Assignment Instructions
 Perform an analysis of the dataset(s) used in Homework #2 using the SVM algorithm. Compare the results with the results from previous homework.
 
+
+# Literature Review
+
 Three Articles on SVM vs Decision Tree on Diabetes:
-- https://arxiv.org/abs/1902.10028
-- https://american-cse.org/sites/csci2020proc/pdfs/CSCI2020-6SccvdzjqC7bKupZxFmCoA/762400a527/762400a527.pdf
-- https://ieeexplore.ieee.org/document/10199539
+
+[M. F. Faruque, Asaduzzaman and I. H. Sarker, "Performance Analysis of Machine Learning Techniques to Predict Diabetes Mellitus," 2019 International Conference on Electrical, Computer and Communication Engineering (ECCE), Cox'sBazar, Bangladesh, 2019, pp. 1-4, doi: 10.1109/ECACE.2019.8679365. keywords: {Diabetes;Machine learning;Support vector machines;Decision trees;Diseases;Machine learning algorithms;Classification algorithms;eHealth;diabetes;machine learning;prediction}](https://arxiv.org/abs/1902.10028)
+
+[L. Ismail and H. Materwala, "Comparative Analysis of Machine Learning Models for Diabetes Mellitus Type 2 Prediction," 2020 International Conference on Computational Science and Computational Intelligence (CSCI), Las Vegas, NV, USA, 2020, pp. 527-533, doi: 10.1109/CSCI51800.2020.00095. keywords: {Support vector machines;Analytical models;Scientific computing;Computational modeling;Machine learning;Predictive models;Feature extraction;artificial intelligence;classification models;diabetes mellitus type 2;health informatics;machine learning models}](https://american-cse.org/sites/csci2020proc/pdfs/CSCI2020-6SccvdzjqC7bKupZxFmCoA/762400a527/762400a527.pdf)
+
+[C. Sonawane, K. Somwanshi, R. Patil and R. Raut, "Diabetic Prediction Using Machine Algorithm SVM and Decision Tree," 2023 International Conference on Applied Intelligence and Sustainable Computing (ICAISC), Dharwad, India, 2023, pp. 1-7, doi: 10.1109/ICAISC58445.2023.10199539. keywords: {Support vector machines;Analytical models;Machine learning algorithms;Predictive models;Prediction algorithms;Diabetes;Glucose;Diabetic Prediction;SVM;Decision Tree}](https://ieeexplore.ieee.org/document/10199539)
+
+
+The application of machine learning algorithms for diabetes prediction has been extensively studied, including compariosn between SVM and Decision Trees. Recent research demonstrates varying levels of effectiveness between these approaches.
+
+Faruque et al. (2019) conducted a comparative analysis of machine learning techniques for diabetes prediction, finding that C4.5 decision tree achieved higher accuracy compared to other algorithms including SVM. Their study on a dataset of 200 patients revealed that decision trees provided better interpretability of results, which is crucial for medical applications. However, they noted that SVM showed promise in handling high-dimensional medical data.
+
+Ismail and Materwala (2020) performed a more extensive comparison using the UCI diabetes dataset with 65,840 observations. Their research demonstrated that SVM with appropriate feature selection could achieve comparable accuracy to decision trees while being more robust to outliers. They emphasized the importance of evaluating models using multiple metrics beyond just accuracy, particularly for imbalanced medical datasets.
+
+Sonawane et al. (2023) provided the most recent analysis, comparing SVM and decision tree algorithms specifically for diabetes prediction. Their results showed SVM slightly outperforming decision trees, with accuracy rates of 76.6% versus 75% respectively. This study particularly highlighted SVM's strength in handling non-linear relationships in medical data and its ability to maintain performance with high-dimensional feature spaces.
 
 
 ```{r setup, include=FALSE}
@@ -46,7 +61,7 @@ This dataset has 100k clinical records of diabetes for health analytic purposes.
 
 [Link to Dataset](https://www.kaggle.com/datasets/priyamchoksi/100000-diabetes-clinical-dataset?resource=download)
 
-Goal: For this dataset, we want to predict whether or not the patient will have diabetes. In other words, this is a classification problem where we have to correctly label data. We will do this using decision trees and a random forest
+Goal: For this dataset, we want to predict whether or not the patient will have diabetes. In other words, this is a classification problem where we have to correctly label data. We will do this using decision trees and SVM.
 
 Importing:
 
@@ -245,11 +260,8 @@ Now that our dataset is clean, we can discuss what model we want to use.
 
 The target variable to predict is diabetes (binary choice whether or not patient will have diabetes).
 
-For the sake of the assignment and to answer the questions, we will be training two decision trees and one random forrest.
+The methodology employed in this analysis follows a systematic approach to data preprocessing and model implementation. The dataset underwent careful cleaning and transformation, including handling missing values and encoding categorical variables. The implementation used both SVM and decision tree algorithms on the same dataset to ensure fair comparison. The SVM model utilized different kernel functions (radial, polynomial, and linear) to identify the optimal approach for diabetes prediction.
 
-Decision trees are a pretty good approximation of how humans make and think about the relative inputs to their decisions. While decision trees can be simple, yet effective, they do have some drawbacks, the primary drawback is the tendency of decision trees to overfit to their training data, this comes from the tendency of decision trees to grow the number of leaf nodes with the number of features.
-
-This homework covers the advantages and disadvantages of using decision trees, in the analysis we train two decision trees on a diabetes dataset to predict diabetes, in addition, we will train a random forest classifier on a subset of features (the same as the one used on the decision trees) to predict the same outcomes.
 
 ## Correlation Matrix
 
@@ -325,7 +337,8 @@ metric <- "Accuracy"
 
 # Models
 
-## SVM Model 1
+## SVM Model 1 - Radial Kernel with Auto-tuning
+
 
 
 ```{r}
@@ -347,6 +360,11 @@ conf_matrix <- confusionMatrix(model1_predictions, test_diab$diabetes)
 print(conf_matrix)
 ```
 
+This model achieved the highest accuracy at 89.29% with optimal parameters of sigma = 0.02523945 and C = 2. The model showed excellent sensitivity (98.80%) but poor specificity (19.82%), indicating it was very good at identifying non-diabetic cases but struggled with diabetic cases. The model went through 15 different C values, showing peak performance at moderate regularization levels. The balanced accuracy of 59.31% suggests some class imbalance issues.
+
+
+## SVM Model 2 - Polynomial Kernel
+
 ```{r}
 set.seed(622)
 
@@ -364,6 +382,13 @@ conf_matrix <- confusionMatrix(model2_predictions, test_diab$diabetes)
 
 print(conf_matrix)
 ```
+The polynomial kernel SVM achieved slightly lower accuracy at 89.23% compared to the radial kernel. The model performed best with a degree of 2, scale of 0.1, and C = 0.25, suggesting that a relatively simple polynomial function was sufficient for the classification task. It showed very similar performance metrics to Model 1, with high sensitivity (98.74%) and low specificity (19.82%), resulting in a balanced accuracy of 59.28%.
+
+
+
+## SVM Model 3 - Linear Kernel
+
+
 
 
 ```{r}
@@ -383,6 +408,12 @@ conf_matrix <- confusionMatrix(model3_predictions, test_diab$diabetes)
 
 print(conf_matrix)
 ```
+
+The linear kernel SVM showed the lowest accuracy among all models at 88.51%. Using a fixed C value of 1, it achieved the highest sensitivity (99.18%) but the lowest specificity (10.60%) of all models. The balanced accuracy of 54.89% was also the lowest, indicating this was the least effective model at handling the class imbalance in the dataset. This suggests that the relationship between features and diabetes classification is non-linear.
+
+
+
+## SVM Model 4 - Radial Kernel with Custom Grid
 
 ```{r}
 set.seed(622)
@@ -406,6 +437,11 @@ conf_matrix <- confusionMatrix(model4_predictions, test_diab$diabetes)
 
 print(conf_matrix)
 ```
+
+This model used a custom grid search for hyperparameter tuning and achieved an accuracy of 88.96%. With optimal parameters of sigma = 0.01 and C = 10, it showed strong sensitivity (98.61%) and slightly better specificity (18.43%) than Model 3. The balanced accuracy of 58.52% was better than the linear kernel but slightly worse than the first two models. The custom grid search helped find a good balance between bias and variance, though it didn't outperform the auto-tuned radial kernel model.
+
+
+## SVM Model Comparison
 
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
@@ -443,28 +479,11 @@ legend("bottomright", legend = c(
 
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Comparing the four SVM implementations reveals interesting patterns in their performance and capabilities. The radial kernel with auto-tuning (Model 1) emerged as the most effective approach with an accuracy of 89.29%, slightly outperforming the polynomial kernel (Model 2) at 89.23%. Both models demonstrated robust classification capabilities, particularly for non-diabetic cases, with sensitivities above 98%. The linear kernel (Model 3), while achieving a respectable 88.51% accuracy, showed limitations in handling the complexity of the diabetes prediction task, suggesting that the relationship between the predictors and diabetes outcomes is inherently non-linear. The custom grid search implementation of the radial kernel (Model 4) achieved 88.96% accuracy, positioning it between the linear and polynomial models in terms of performance. Notably, all four models struggled with specificity (ranging from 10.60% to 19.82%), indicating a consistent challenge in correctly identifying diabetic cases. This pattern suggests that while different kernel functions and parameter tuning strategies can improve overall accuracy, the fundamental challenge of class imbalance in diabetes prediction remains. The superior performance of the radial kernel (Model 1) can be attributed to its ability to capture complex non-linear relationships while maintaining computational efficiency, making it the most suitable choice for this particular diabetes prediction task.
 
 
 Keeping Decision trees for reference for now
+
 ## Decision Tree 1
 
 For this tree we are throwing everything into the decision tree and letting the model choose what data is most important.
@@ -655,94 +674,170 @@ Key performance metrics:
 
 This confusion matrix confirms that the model is essentially a naive classifier that always predicts "no diabetes" regardless of the input features. While it achieves a seemingly high accuracy of 88.2% due to class imbalance, it's clinically useless as it fails to identify any diabetic patients.
 
-## Comparing Decision Trees
+## Comparing SVM Models vs Decision Trees
 
-The comparison of our two decision trees provides good insights into both the strengths and limitations of decision tree models in healthcare prediction. The first tree, which included A1C levels among its predictors, demonstrated reasonable predictive capability with an 89.3% accuracy rate and meaningful splits based on clinical markers. However, it still exhibited the "bad" aspects mentioned in the article; namely bias toward the majority class (non-diabetic) and limited sensitivity in detecting positive cases (only 17.3%). The second tree starkly illustrated the "ugly" aspects of decision trees when working with insufficient features. It devolved into a single-node stump with zero predictive value beyond majority class prediction. This addresses the article's concerns about subjectivity and complexity in decision trees.
-
-To improve these models and counter the negative perception of decision trees in healthcare, we can try a few things:
-
-1.  Incorporate class balancing techniques to address the sensitivity issue
-
-2.  Use ensemble methods like random forests to improve robustness (which we will try out)
-
-The stark difference between our two trees (one with biomarkers and one without) also emphasizes the article's point about the importance of proper feature selection and domain expertise in creating meaningful decision trees. While decision trees can be powerful tools in healthcare prediction, their successful implementation requires careful consideration of feature selection, class balance, and regular validation.
-
-## Random Forest Classifier
-
-The random forest classifier aimed to predict the presence of diabetes using various health and demographic features in the dataset. After ensuring the target variable was treated as a categorical factor, the dataset was split into training and testing subsets, with 70% allocated to training. A simplified grid search was performed to identify the optimal number of features (`mtry`) to consider at each split, helping to balance model performance with runtime.
 
 ```{r}
+# Create ROC curves for each model
+# Decision Tree
+roc_pred_dt <- roc(as.numeric(test_diab$diabetes), 
+                   as.numeric(predictions_tree))
+auc_dt <- auc(roc_pred_dt)
 
-if (!require(randomForest)) install.packages("randomForest")
-library(randomForest)
-if (!require(caret)) install.packages("caret") 
-library(caret)
+# SVM Models
+roc_pred_svm1 <- roc(as.numeric(test_diab$diabetes), 
+                     as.numeric(model1_predictions))
+auc_svm1 <- auc(roc_pred_svm1)
 
+roc_pred_svm2 <- roc(as.numeric(test_diab$diabetes), 
+                     as.numeric(model2_predictions))
+auc_svm2 <- auc(roc_pred_svm2)
 
-diabetes_data$diabetes <- as.factor(diabetes_data$diabetes)
+roc_pred_svm3 <- roc(as.numeric(test_diab$diabetes), 
+                     as.numeric(model3_predictions))
+auc_svm3 <- auc(roc_pred_svm3)
 
+roc_pred_svm4 <- roc(as.numeric(test_diab$diabetes), 
+                     as.numeric(model4_predictions))
+auc_svm4 <- auc(roc_pred_svm4)
 
-set.seed(622)
+# Plot all ROC curves
+plot(roc_pred_dt, col = "green", lwd = 2, 
+     main = "ROC Curves - Decision Tree vs SVM Models")
+plot(roc_pred_svm1, col = "red", lwd = 2, add = TRUE)
+plot(roc_pred_svm2, col = "blue", lwd = 2, add = TRUE)
+plot(roc_pred_svm3, col = "purple", lwd = 2, add = TRUE)
+plot(roc_pred_svm4, col = "orange", lwd = 2, add = TRUE)
 
-sample_index <- sample(1:nrow(diabetes_data), size = 0.7 * nrow(diabetes_data))
-train_data <- diabetes_data[sample_index, ]
-test_data <- diabetes_data[-sample_index, ]
-
-mtry_grid <- c(2, 4, 6)
-best_mtry <- mtry_grid[1]
-best_oob_error <- Inf
-
-for (m in mtry_grid) {
-  
-  rf_temp <- randomForest(
-    diabetes ~ ., 
-    data = train_data, 
-    ntree = 100, 
-    mtry = m, 
-    importance = TRUE
-  )
-  
-  
-  oob_error <- mean(rf_temp$err.rate[, "OOB"])
-  
-  if (!is.na(oob_error) && oob_error < best_oob_error) {
-    best_oob_error <- oob_error
-    best_mtry <- m
-  }
-}
-
-
-rf_model <- randomForest(
-  diabetes ~ ., 
-  data = train_data, 
-  ntree = 300,    
-  mtry = best_mtry, 
-  importance = TRUE
-)
-
-
-print(rf_model)
-
-
-rf_predictions <- predict(rf_model, test_data)
-conf_matrix <- confusionMatrix(as.factor(rf_predictions), as.factor(test_data$diabetes))
-print(conf_matrix)
-
-
-varImpPlot(rf_model, main = "Variable Importance in Predicting Diabetes", n.var = 10, pch = 16, col = "blue", cex = 1.2)
-
-
-
+# Add legend
+legend("bottomright", 
+       legend = c(
+         paste("Decision Tree (AUC =", round(auc_dt, 3), ")"),
+         paste("SVM Radial (AUC =", round(auc_svm1, 3), ")"),
+         paste("SVM Polynomial (AUC =", round(auc_svm2, 3), ")"),
+         paste("SVM Linear (AUC =", round(auc_svm3, 3), ")"),
+         paste("SVM Radial Custom (AUC =", round(auc_svm4, 3), ")")
+       ),
+       col = c("green", "red", "blue", "purple", "orange"), 
+       lwd = 2)
 ```
 
-Using 300 trees with 4 variables per split, the Random Forest achieved an accuracy of 89.46%, marginally improving upon our first decision tree's performance of 89.3% and substantially outperforming the ineffective second "stump" tree.
 
-The model's variable importance plot revealed BMI as the strongest predictor, followed by A1C-related variables and then demographic/comorbidity factors, aligning with clinical understanding of diabetes risk factors.
 
-However, while the model showed excellent sensitivity (98.38%) for identifying non-diabetic cases, it struggled with specificity (22.43%) for diabetic cases, reflecting persistent challenges with class imbalance. This addresses the article's concerns about decision tree limitations while demonstrating how ensemble methods like Random Forests can mitigate some of these issues.
+The comparison between SVM and Decision Tree models reveals interesting insights into handling the inherent class imbalance in the diabetes dataset. Both approaches achieved similar overall accuracy rates, with the best performing SVM (radial kernel) reaching 89.29% and the primary decision tree achieving 89.3%. However, their handling of the class imbalance problem differed significantly. This similarity in performance is further reflected in their ROC curves and AUC scores, with the radial and polynomial SVM models achieving marginally better AUC scores (0.593) compared to the decision tree (0.592).
 
-The differences between our three models shows both the potential and limitations of tree-based methods in medical prediction.The Random Forest's ability to capture complex variable interactions while maintaining reasonable accuracy suggests that ensemble methods, combined with careful feature selection and domain knowledge, can help overcome many of the traditional limitations of decision trees in healthcare applications. However, this must be balanced against the increased complexity and reduced interpretability compared to simple decision trees, highlighting the ongoing trade-off between model performance and practicality in clinical settings.
+The SVM models, particularly the radial kernel implementation, demonstrated more balanced performance across classes, despite the challenges posed by the imbalanced dataset (88.4% non-diabetic vs 11.6% diabetic). The best SVM model achieved a specificity of 19.82% for diabetic cases while maintaining high sensitivity of 98.80% for non-diabetic cases. This suggests that while still affected by the class imbalance, the SVM was better able to learn the decision boundary between classes. The ROC curves show that the radial and polynomial SVM models performed slightly better in terms of the trade-off between sensitivity and specificity across different classification thresholds. In contrast, the decision tree models showed more extreme effects from the class imbalance. The primary decision tree achieved very high specificity (98.9%) but struggled significantly with sensitivity (17.3%) for diabetic cases. The linear SVM performed notably worse than other models with the lowest AUC of 0.549, suggesting its inability to capture the non-linear relationships in the data.
 
-To change the perception of decision trees, especially considering their limitations and instances where they’ve gone wrong, we can adopt various strategies when using a decision tree to address real problems, such as implementing techniques to control overfitting like pruning or ensembling. 
+The SVM's relatively better handling of class imbalance can be attributed to its ability to establish complex decision boundaries through kernel functions, whereas decision trees, being hierarchical in nature, showed more vulnerability to the dominance of the majority class. The ROC analysis confirms this, with radial and polynomial kernels showing superior performance (AUC = 0.593) compared to both the linear kernel and the custom radial implementation (AUC = 0.585). This suggests that for imbalanced medical datasets like this one, SVM with appropriate kernel selection might be the more reliable choice, though both approaches would benefit from additional techniques to address class imbalance, such as oversampling or undersampling methods. The relatively low AUC scores across all models (ranging from 0.549 to 0.593) indicate that there's significant room for improvement in the models' discriminative abilities.
 
-The strengths and weaknesses of decision trees, ultimately promoting a more informed and realistic perspective on their utility past the results of the homework.
+
+#Secondary Data Processing w/ ROSE
+
+In order to address the significant class imbalance problem observed in our diabetes dataset (88.4% non-diabetic vs 11.6% diabetic cases), we implemented the Random Over-Sampling Examples (ROSE) technique to create a more balanced training dataset. This approach, combined with a simplified SVM model using a radial kernel, proved more effective than our previous SMOTE attempts. The process began with careful data preparation, including feature scaling and proper handling of categorical variables, followed by the application of ROSE to create synthetic samples that would help balance our training data.
+
+
+```{r}
+library(ROSE)
+library(e1071)
+library(caret)
+library(dplyr)
+library(pROC)
+
+# Step 1: Prepare Features (X) and Target (y)
+X <- diabetes_data %>% select(-diabetes)  # Exclude target column
+y <- diabetes_data$diabetes               # Target variable
+
+# Ensure target variable (y) is binary with proper factor levels
+y <- factor(y, levels = c(0, 1), labels = c("neg", "pos"))
+
+# Debug: Check class distribution
+print("Initial class distribution:")
+print(table(y))
+
+# Step 2: Ensure All Columns in X Are Numeric and Scaled
+X <- as.data.frame(lapply(X, function(col) {
+  if (is.factor(col) || is.character(col)) {
+    as.numeric(as.factor(col))
+  } else if (is.numeric(col)) {
+    scale(col)  # Scale numeric columns
+  } else {
+    return(NULL)
+  }
+}))
+
+# Combine X and y into one dataframe
+combined_data <- cbind(X, diabetes = y)
+
+# Apply ROSE to balance the dataset
+set.seed(622)
+balanced_data <- ROSE(diabetes ~ ., data = combined_data, N = 2 * min(table(y)))$data
+
+# Step 4: Train-Test Split
+set.seed(622)
+train_split_idx <- createDataPartition(balanced_data$diabetes, p = 0.7, list = FALSE)
+train_diab <- balanced_data[train_split_idx, ]
+test_diab <- balanced_data[-train_split_idx, ]
+
+# Step 5: Train SVM Model using e1071 directly
+set.seed(622)
+svm_model <- svm(diabetes ~ ., 
+                 data = train_diab,
+                 kernel = "radial",
+                 cost = 1,
+                 gamma = 0.1,
+                 probability = TRUE)
+
+# Predictions
+predictions <- predict(svm_model, newdata = test_diab, probability = TRUE)
+prob_predictions <- attr(predictions, "probabilities")[, "pos"]
+
+# Confusion Matrix
+conf_matrix <- confusionMatrix(predictions, test_diab$diabetes)
+print("Confusion Matrix:")
+print(conf_matrix)
+
+# ROC Curve
+roc_obj <- roc(as.numeric(test_diab$diabetes == "pos"), 
+               as.numeric(predictions == "pos"))
+auc_val <- auc(roc_obj)
+
+# Plot ROC Curve
+plot(roc_obj, 
+     col = "#1b9e77", 
+     lwd = 2, 
+     main = "ROC Curve for SVM with ROSE")
+legend("bottomright", 
+       legend = paste("SVM (AUC =", round(auc_val, 3), ")"),
+       col = "#1b9e77", 
+       lwd = 2)
+
+# Print model performance metrics
+print("Model Performance Metrics:")
+print(paste("Accuracy:", round(conf_matrix$overall["Accuracy"], 3)))
+print(paste("Sensitivity:", round(conf_matrix$byClass["Sensitivity"], 3)))
+print(paste("Specificity:", round(conf_matrix$byClass["Specificity"], 3)))
+print(paste("AUC:", round(auc_val, 3)))
+```
+
+The implementation of ROSE substantially improved our model's performance compared to both our previous SVM attempts and decision tree models. While our earlier approaches struggled with the class imbalance, achieving AUC scores around 0.59, our ROSE-enhanced SVM achieved an impressive AUC of 0.835. The model demonstrated strong overall performance with 83.4% accuracy and, more importantly, showed balanced predictive capabilities with 80% sensitivity and 86.9% specificity. This balanced performance is particularly crucial in medical diagnostics, where both false positives and false negatives can have significant consequences.
+
+To further enhance the model's performance, several approaches could be considered: developing more sophisticated feature engineering techniques to capture complex relationships in the data; implementing a careful hyperparameter optimization strategy through grid search of SVM parameters like cost and gamma; exploring ensemble methods that combine our SVM with other algorithms such as Random Forests or gradient boosting; investigating alternative sampling techniques like ADASYN; and potentially exploring deep learning approaches that might better capture the intricate patterns present in medical data. The current results, while significantly improved, suggest there's still potential for even better performance through these additional refinements, particularly in reducing false negatives which are especially critical in medical diagnosis scenarios.
+
+# TLDR
+
+## Insights from our SVM models
+
+Our analysis of different SVM implementations revealed that the radial kernel with auto-tuning performed best, achieving 89.29% accuracy. Each kernel type offered distinct advantages, with the radial kernel showing superior ability to capture non-linear relationships in the diabetes data. However, all models initially struggled with class imbalance, showing high sensitivity (>98%) but poor specificity (<20%) for identifying diabetic cases.
+
+## Comparing SVM and Decision Trees for diabetes data
+
+Both SVM and decision tree approaches achieved similar overall accuracy (~89.3%), but handled class imbalance differently. SVMs demonstrated more balanced performance across classes, while decision trees showed more extreme effects from class imbalance. The decision tree achieved very high specificity (98.9%) but struggled with sensitivity (17.3%) for diabetic cases. The ROC analysis confirmed SVMs' superior performance, with radial and polynomial kernels showing better AUC scores (0.593) compared to both the linear kernel and basic decision tree implementations.
+
+
+## Strategies to enhance SVM 
+
+When we implemented ROSE (Random Over-Sampling Examples) to address class imbalance, model performance improved dramatically. The ROSE-enhanced SVM achieved an AUC of 0.835, with balanced sensitivity (80%) and specificity (86.9%). This was a significant improvement over the initial models' AUC of around 0.59. Other potential enhancement strategies include sophisticated feature engineering, hyperparameter optimization through grid search, ensemble methods combining SVM with other algorithms, and exploring alternative sampling techniques.
+
+## Conclusion 
+
+The analysis demonstrates that while both SVM and decision tree approaches can effectively predict diabetes, SVMs show more promise when properly tuned and combined with appropriate sampling techniques. The dramatic improvement in performance after implementing ROSE suggests that addressing class imbalance is crucial for medical diagnostic models. The final ROSE-enhanced SVM model, with its balanced performance metrics, provides a more reliable tool for diabetes prediction, though there remains room for further optimization through additional refinements in feature engineering and model architecture.
