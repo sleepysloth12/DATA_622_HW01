@@ -1,0 +1,318 @@
+---
+title: "Data 622 HW"
+author: "CN"
+date: "2024-11-23"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+
+knitr::opts_chunk$set(warning=FALSE)
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggcorrplot)
+library(GGally)
+library(VIM)
+library(gridExtra)
+library(caret)
+library(leaps)
+library(boot)
+library(summarytools)
+library(corrplot)
+library(car)
+library(rpart)
+library(rpart.plot)
+library(dplyr)
+
+
+```
+
+
+```{r}
+
+diabetes_data <- read.csv("C:/Users/Chafiaa/Downloads/diabetes_dataset.csv")
+
+```
+
+
+```{r}
+
+diabetes_data = diabetes_data %>%
+select(-year)
+
+```
+
+
+```{r}
+
+diabetes_data = diabetes_data %>%
+filter(gender == "Female"| gender== "Male")%>%
+mutate(is_female=ifelse(gender == "Female",1,0))%>%
+select(-gender)
+
+
+```
+
+
+```{r}
+
+set.seed(622)
+train_split_idx=createDataPartition(diabetes_data$diabetes, p=0.7, list=FALSE)
+train_diab = diabetes_data[train_split_idx,]
+test_diab = diabetes_data[-train_split_idx,]
+control <- trainControl(method = "cv", number = 5)
+metric <- "Accuracy"
+
+```
+
+
+```{r}
+set.seed(622)
+fit_tree <- rpart(diabetes ~ ., method = 'class', data = train_diab)
+rpart.plot(fit_tree, type = 4, extra = 101)
+```
+
+
+```{r}
+
+diabetes_decision_tree_stratified_pred <- predict(fit_tree, test_diab, type = "class")
+confusionMatrix(diabetes_decision_tree_stratified_pred, test_diab$diabetes)
+
+```
+
+
+```{r}
+
+library(ROCR)
+
+roc_pred_tree <-
+prediction(
+  predictions = as.numeric(diabetes_decision_tree_stratified_pred),
+  labels = as.numeric(test_diab$diabetes)
+)
+roc_perf_tree <- performance(roc_pred_tree, measure = "tpr", x.measure = "fpr")
+plot(roc_perf_tree, main = "ROC Curve", col = "pink", lwd = 3)
+abline(a = 0, b = 1, lwd = 3, lty = 2, col = 1)
+
+```
+
+
+```{r}
+auc_perf_tree <- performance(roc_pred_tree, measure = "auc")
+diabetes_auc_tree <- unlist(slot(auc_perf_tree,"y.values"))
+paste("Calculated AUC: ", diabetes_auc_tree)
+
+```
+
+
+```{r}
+# linear Karnel SVM 
+
+library(e1071)
+diabetes_svm_linear <- svm(
+  diabetes ~ .,
+  kernel = "linear",
+  type = "C-classification",
+  data = train_diab
+)
+
+summary(diabetes_svm_linear)
+
+
+```
+
+
+```{r}
+
+diabetes_svm_pred_linear <- predict(diabetes_svm_linear, test_diab, type = "class")
+confusionMatrix(diabetes_svm_pred_linear, test_diab$diabetes)
+
+
+
+```
+
+
+```{r}
+library(ROCR)
+
+roc_pred_linear <-
+prediction(
+  predictions = as.numeric(diabetes_svm_pred_linear),
+  labels = as.numeric(test_diab$diabetes)
+)
+roc_perf_linear <- performance(roc_pred_linear, measure = "tpr", x.measure = "fpr")
+plot(roc_perf_linear, main = "ROC Curve", col = "blue", lwd = 3)
+abline(a = 0, b = 1, lwd = 3, lty = 2, col = 1)
+
+
+```
+
+
+```{r}
+auc_perf_linear <- performance(roc_pred_linear, measure = "auc")
+diabetes_auc_linear <- unlist(slot(auc_perf_linear,"y.values"))
+paste("Calculated AUC: ", diabetes_auc_linear)
+
+
+
+```
+
+
+```{r}
+# Polynomial Kernel SVM:
+
+diabetes_svm_polynomial <- svm(
+  diabetes ~ .,
+  kernel = "polynomial",
+  type = "C-classification",
+  data = train_diab
+)
+
+summary(diabetes_svm_polynomial) 
+                    
+
+```
+
+
+```{r}
+diabetes_svm_pred_polynomial <- predict(diabetes_svm_polynomial, test_diab, type = "class")
+confusionMatrix(diabetes_svm_pred_polynomial, test_diab$diabetes)
+```
+
+
+```{r}
+roc_pred_polynomial <-
+prediction(
+  predictions = as.numeric(diabetes_svm_pred_polynomial),
+  labels = as.numeric(test_diab$diabetes)
+)
+roc_perf_polynomial <- performance(roc_pred_polynomial, measure = "tpr", x.measure = "fpr")
+plot(roc_perf_polynomial, main = "ROC Curve", col = "orange", lwd = 3)
+abline(a = 0, b = 1, lwd = 3, lty = 2, col = 1) 
+
+```
+
+
+```{r}
+
+auc_perf_polynomial <- performance(roc_pred_polynomial, measure = "auc")
+diabetes_auc_polynomial <- unlist(slot(auc_perf_polynomial,"y.values"))
+paste("Calculated AUC: ", diabetes_auc_polynomial) 
+
+```
+
+
+```{r}
+
+# Radial Basis Kernel SVM
+
+diabetes_svm_radial <- svm(
+  diabetes ~ .,
+  kernel = "radial",
+  type = "C-classification",
+  data = train_diab
+)
+
+summary(diabetes_svm_radial)
+
+
+```
+
+
+```{r}
+
+diabetes_svm_pred_radial <- predict(diabetes_svm_radial, test_diab, type = "class")
+confusionMatrix(diabetes_svm_pred_radial, test_diab$diabetes) 
+
+
+```
+
+
+```{r}
+
+roc_pred_radial <-
+prediction(
+  predictions = as.numeric(diabetes_svm_pred_radial),
+  labels = as.numeric(test_diab$diabetes)
+)
+roc_perf_radial <- performance(roc_pred_radial, measure = "tpr", x.measure = "fpr")
+plot(roc_perf_radial, main = "ROC Curve", col = "purple", lwd = 3)
+abline(a = 0, b = 1, lwd = 3, lty = 2, col = 1)  
+
+```
+
+
+```{r}
+
+auc_perf_radial <- performance(roc_pred_radial, measure = "auc")
+diabetes_auc_radial <- unlist(slot(auc_perf_radial,"y.values"))
+paste("Calculated AUC: ", diabetes_auc_radial)  
+```
+
+
+```{r}
+# Sigmoid Kernel SVM:
+
+diabetes_svm_sigmoid <- svm(
+  diabetes ~ .,
+  kernel = "sigmoid",
+  type = "C-classification",
+  data = train_diab
+)
+
+summary(diabetes_svm_sigmoid) # train_diab test_diab
+
+```
+
+
+```{r}
+
+diabetes_svm_pred_sigmoid <- predict(diabetes_svm_sigmoid, test_diab, type = "class")
+confusionMatrix(diabetes_svm_pred_sigmoid, test_diab$diabetes)
+
+
+```
+
+
+```{r}
+
+roc_pred_sigmoid <-
+prediction(
+  predictions = as.numeric(diabetes_svm_pred_sigmoid),
+  labels = as.numeric(test_diab$diabetes)
+)
+roc_perf_sigmoid <- performance(roc_pred_sigmoid, measure = "tpr", x.measure = "fpr")
+plot(roc_perf_sigmoid, main = "ROC Curve", col = "red", lwd = 3)
+abline(a = 0, b = 1, lwd = 3, lty = 2, col = 1)
+
+# train_diab test_diab
+```
+
+
+```{r}
+
+auc_perf_sigmoid <- performance(roc_pred_sigmoid, measure = "auc")
+diabetes_auc_sigmoid <- unlist(slot(auc_perf_sigmoid,"y.values"))
+paste("Calculated AUC: ", diabetes_auc_sigmoid)
+
+```
+
+
+```{r}
+data1 <- tribble(
+  ~"",~"Accuracy",~"Kappa",~"Sensitivity",~"Specificity",~"AUC",
+  "Decision Tree (HW 2)", "0.9733", "0.7942", "1.0000", "0.6778", "0.8389",
+  "Linear Kernel SVM","0.9625","0.707","0.9952","0.6001","0.7976",
+  "Polynomial Kernel SVM", "0.9557","0.6173","0.9994","0.4712","0.7353",
+  "Radial Kernel SVM", "0.9631","0.7017","0.9983","0.5735","0.7858",
+  "Sigmoid Kernel SVM", "0.9496","0.6372","0.9809","0.6025","0.7916"
+)
+knitr::kable((data1), booktabs = TRUE)
+```
+##  Deacision tree from HW2 has better performance then the SVM models with a hisgest accuracy of 97% and highest AUC ~0.84, and amoung the SVM models Linear Kernel SVM & Radial Kernel SVM performed well with equal accuracy of 96% but  linear karnel has a slightly higher AUC ~0.8 .
+##  The analysis compares various machine learning models for diabetes prediction based on health indicators. The Decision Tree modelshowed a higher performance when applied to a randomly sampled dataset. Among SVM models, the Linear Kernel SVM demonstrates superior accuracy, Kappa, and specificity, while the Radial Kernel SVM performs well in sensitivity . In a direct comparison, the Linear Kernel SVM underperforms the Decision Tree model in accuracy, Kappa coefficient, and specificity. Both models show comparable AUC values, indicating their effectiveness in determining whether or not someone has diabetes
+
+
+
