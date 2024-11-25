@@ -1,12 +1,12 @@
 ---
-title: "Data 622 Homework 2"
+title: "Data 622 Homework 3"
 author: "Brandon Cunningham, Jean Jimenez, Chafiaa Nadour, Shri Tripathi"
 date: "`r Sys.Date()`"
 output:
-  pdf_document: 
-    latex_engine: xelatex
   html_document:
     df_print: paged
+  pdf_document: 
+    latex_engine: xelatex
 ---
 
 # Assignment Instructions
@@ -24,7 +24,7 @@ Three Articles on SVM vs Decision Tree on Diabetes:
 [C. Sonawane, K. Somwanshi, R. Patil and R. Raut, "Diabetic Prediction Using Machine Algorithm SVM and Decision Tree," 2023 International Conference on Applied Intelligence and Sustainable Computing (ICAISC), Dharwad, India, 2023, pp. 1-7, doi: 10.1109/ICAISC58445.2023.10199539. keywords: {Support vector machines;Analytical models;Machine learning algorithms;Predictive models;Prediction algorithms;Diabetes;Glucose;Diabetic Prediction;SVM;Decision Tree}](https://ieeexplore.ieee.org/document/10199539)
 
 
-The application of machine learning algorithms for diabetes prediction has been extensively studied, including comparison between SVM and Decision Trees. Recent research demonstrates varying levels of effectiveness between these approaches.
+The application of machine learning algorithms for diabetes prediction has been extensively studied, including compariosn between SVM and Decision Trees. Recent research demonstrates varying levels of effectiveness between these approaches.
 
 Faruque et al. (2019) conducted a comparative analysis of machine learning techniques for diabetes prediction, finding that C4.5 decision tree achieved higher accuracy compared to other algorithms including SVM. Their study on a dataset of 200 patients revealed that decision trees provided better interpretability of results, which is crucial for medical applications. However, they noted that SVM showed promise in handling high-dimensional medical data.
 
@@ -32,7 +32,6 @@ Ismail and Materwala (2020) performed a more extensive comparison using the UCI 
 
 Sonawane et al. (2023) provided the most recent analysis, comparing SVM and decision tree algorithms specifically for diabetes prediction. Their results showed SVM slightly outperforming decision trees, with accuracy rates of 76.6% versus 75% respectively. This study particularly highlighted SVM's strength in handling non-linear relationships in medical data and its ability to maintain performance with high-dimensional feature spaces.
 
-The recent studies comparing machine learning algorithms for diabetes prediction highlight distinct strengths and trade-offs between SVM and decision trees. While decision trees often excel in interpretability and accuracy, as shown by Faruque et al. (2019), SVM demonstrates robust performance in handling high-dimensional and non-linear data, as emphasized in the findings of Ismail and Materwala (2020) and Sonawane et al. (2023).
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -729,7 +728,7 @@ The comparison between SVM and Decision Tree models reveals interesting insights
 
 The SVM models, particularly the radial kernel implementation, demonstrated more balanced performance across classes, despite the challenges posed by the imbalanced dataset (88.4% non-diabetic vs 11.6% diabetic). The best SVM model achieved a specificity of 19.82% for diabetic cases while maintaining high sensitivity of 98.80% for non-diabetic cases. This suggests that while still affected by the class imbalance, the SVM was better able to learn the decision boundary between classes. The ROC curves show that the radial and polynomial SVM models performed slightly better in terms of the trade-off between sensitivity and specificity across different classification thresholds. In contrast, the decision tree models showed more extreme effects from the class imbalance. The primary decision tree achieved very high specificity (98.9%) but struggled significantly with sensitivity (17.3%) for diabetic cases. The linear SVM performed notably worse than other models with the lowest AUC of 0.549, suggesting its inability to capture the non-linear relationships in the data.
 
-The SVM's relatively better handling of class imbalance can be attributed to its ability to establish complex decision boundaries through kernel functions, whereas decision trees, being hierarchical in nature, showed more vulnerability to the dominance of the majority class. The ROC analysis confirms this, with radial and polynomial kernels showing superior performance (AUC = 0.593) compared to both the linear kernel and the custom radial implementation (AUC = 0.585). This suggests that for imbalanced medical datasets like this one, SVM with appropriate kernel selection might be the more reliable choice, though both approaches would benefit from additional techniques to address class imbalance, such as oversampling or undersampling methods. The relatively low AUC scores across all models (ranging from 0.549 to 0.593) indicate that there's significant room for improvement in the models' discriminating abilities.
+The SVM's relatively better handling of class imbalance can be attributed to its ability to establish complex decision boundaries through kernel functions, whereas decision trees, being hierarchical in nature, showed more vulnerability to the dominance of the majority class. The ROC analysis confirms this, with radial and polynomial kernels showing superior performance (AUC = 0.593) compared to both the linear kernel and the custom radial implementation (AUC = 0.585). This suggests that for imbalanced medical datasets like this one, SVM with appropriate kernel selection might be the more reliable choice, though both approaches would benefit from additional techniques to address class imbalance, such as oversampling or undersampling methods. The relatively low AUC scores across all models (ranging from 0.549 to 0.593) indicate that there's significant room for improvement in the models' discriminative abilities.
 
 
 #Secondary Data Processing w/ ROSE
