@@ -9,6 +9,13 @@ output:
     df_print: paged
 ---
 
+# Introduction
+For this assignment we will be using a kaggle dataset on houses to predict house prices using features of the house.
+
+[Link to Dataset](https://www.kaggle.com/datasets/zafarali27/house-price-prediction-dataset?resource=download)
+
+For prediction we will be using a random forest model and a nueral network, giving both the same data to work with and seeing which is better at this specific task.
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -25,8 +32,34 @@ library(leaps)
 library(boot)
 library(summarytools)
 library(corrplot)
+library(fastDummies)
 library(car)
 library(rpart)
 library(rpart.plot)
 library(dplyr)
 ```
+
+Our first step is to load in the data and check for missing values.
+
+```{r}
+data <- read.csv(url('https://raw.githubusercontent.com/sleepysloth12/DATA_622_HW01/refs/heads/main/homework4/House%20Price%20Prediction%20Dataset.csv'))
+any(is.na(data))
+```
+
+Since there are no missing values we can skip the imputation step and go straight to transformations.
+
+Firstly we want to convert the column condition to numeric. Since it is an ordinal column where there is a ranking to the conditions we convert them to 0-3 instead of using dummies.
+```{r}
+# Convert Condition to numeric
+data$Condition <- as.numeric(factor(data$Condition, levels = c("Poor", "Fair", "Good", "Excellent"))) - 1
+```
+Next we convert Garage from a Yes/No categorical column to a 0/1 column.
+```{r}
+data$Garage <- factor(ifelse(data$Garage == "Yes", 1, 0))
+```
+Lastly we want to one hot encode the location column as it is not ordinal and view the new dataset.
+```{r}
+data <- dummy_cols(data, select_columns = "Location", remove_first_dummy = TRUE, remove_selected_columns = TRUE)
+head(data)
+```
+
