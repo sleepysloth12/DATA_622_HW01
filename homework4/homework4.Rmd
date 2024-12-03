@@ -9,18 +9,10 @@ output:
     df_print: paged
 ---
 
-# Introduction
-For this assignment we will be using a kaggle dataset on houses to predict house prices using features of the house.
+# Introduction: For this assignment we will be using a kaggle dataset on houses to predict house prices using features of the house. [Link to Dataset](https://www.kaggle.com/datasets/zafarali27/house-price-prediction-dataset?resource=download). For prediction we will be using a random forest model and a nueral network, giving both the same data to work with and seeing which is better at this specific task.
 
-[Link to Dataset](https://www.kaggle.com/datasets/zafarali27/house-price-prediction-dataset?resource=download)
+```{r}
 
-For prediction we will be using a random forest model and a nueral network, giving both the same data to work with and seeing which is better at this specific task.
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(ggcorrplot)
@@ -42,24 +34,150 @@ library(dplyr)
 Our first step is to load in the data and check for missing values.
 
 ```{r}
-data <- read.csv(url('https://raw.githubusercontent.com/sleepysloth12/DATA_622_HW01/refs/heads/main/homework4/House%20Price%20Prediction%20Dataset.csv'))
+data <- read.csv("C:/Users/Chafiaa/Downloads/House Price Prediction Dataset.csv")
 any(is.na(data))
 ```
 
-Since there are no missing values we can skip the imputation step and go straight to transformations.
-
-Firstly we want to convert the column condition to numeric. Since it is an ordinal column where there is a ranking to the conditions we convert them to 0-3 instead of using dummies.
+## Since there are no missing values we can skip the imputation step and go straight to transformations. Firstly we want to convert the column condition to numeric. Since it is an ordinal column where there is a ranking to the conditions we convert them to 0-3 instead of using dummies.
 ```{r}
 # Convert Condition to numeric
 data$Condition <- as.numeric(factor(data$Condition, levels = c("Poor", "Fair", "Good", "Excellent"))) - 1
 ```
-Next we convert Garage from a Yes/No categorical column to a 0/1 column.
+## Next we convert Garage from a Yes/No categorical column to a 0/1 column.
 ```{r}
 data$Garage <- factor(ifelse(data$Garage == "Yes", 1, 0))
 ```
-Lastly we want to one hot encode the location column as it is not ordinal and view the new dataset.
+##  Lastly we want to one hot encode the location column as it is not ordinal and view the new dataset.
 ```{r}
 data <- dummy_cols(data, select_columns = "Location", remove_first_dummy = TRUE, remove_selected_columns = TRUE)
 head(data)
+```
+
+
+```{r}
+summary(data)
+```
+
+
+
+
+
+##  RF model:
+```{r}
+
+library(randomForest)
+
+# Splitting the dataset into training and testing:
+
+set.seed(123)
+training <- sample(1:nrow(data), 0.8 * nrow(data))
+train_data <- data[training, ]
+test_data <- data[-training, ]
+
+# Train the Random Forest model
+rf_model <- randomForest(Price ~ ., data = train_data, ntree = 500, mtry = 3)
+
+# Evaluate the model
+predicted_prices <- predict(rf_model, test_data)
+mse <- mean((predicted_prices - test_data$Price)^2)
+print(paste("Mean Squared Error: ", mse))
+
+```
+
+
+```{r}
+
+importance(rf_model) # importance of each variable.
+
+
+```
+
+
+```{r}
+
+ggplot(data, ylab = "Sale Price  (USD)", aes(x=Price)) + 
+    geom_histogram(bins=30, fill="red") +
+    ggtitle("Figure 3: Distribution of Sale Prices After randomForest Imputation") 
+
+```
+
+
+```{r}
+print(rf_model)
+```
+
+
+```{r}
+
+# predicted_prices are the randomForest predictions and test_data contains the real prices
+actual_prices <- test_data$Price
+
+# Calculate mean squared error 
+mse <- mean((predicted_prices - actual_prices)^2)
+
+# Calculate root mean squared error
+rmse <- sqrt(mse)
+
+# Calculate mean absolute error
+mae <- mean(abs(predicted_prices - actual_prices))
+
+# Calculate r-squared
+rss <- sum((predicted_prices - actual_prices)^2)
+tss <- sum((actual_prices - mean(actual_prices))^2)
+r_squared <- 1 - rss/tss
+
+# Print the metrics
+print(paste("MSE:", mse))
+
+```
+
+
+```{r}
+print(paste("RMSE:", rmse))
+```
+
+
+```{r}
+print(paste("MAE:", mae))
+```
+
+
+```{r}
+print(paste("R-squared:", r_squared))
+```
+
+
+##  Neural Network Model:
+```{r}
+
+
+set.seed(123)
+nnet_model <- train(Price ~., 
+                    data = train_data, 
+                    method = "nnet", 
+                    trControl = trainControl(method = "cv", number = 10),
+                    trace=0)
+
+nnet_model
+
+
+
+
+
+```
+
+
+```{r}
+
+print(nnet_model)
+
+```
+
+
+```{r}
+```
+
+
+```{r}
 ```
 
