@@ -88,6 +88,21 @@ Our first component explains about 13% which us a good amount, but the more inte
 What this suggest is that every column in the dataset is important and that we should not try to simplify the model as there are no components that explain an insignificant amount and all of the varibles contain unique information in them. 
 
 
+Here we are adding an adjusted area column that squares area in urban environments and squareroot's it in suburban ones because in cities space is much more of a luxury than in a rural or suburban area.
+
+```{r}
+data$AdjustedArea <- with(data, ifelse(
+  Location_Urban == 1,       # Condition for Urban
+  Area^2,                    # Square the Area for Urban
+  ifelse(
+    Location_Suburban == 1,     # Condition for Suburban
+    Area,                    # Leave Area unchanged for Suburban
+    sqrt(Area)               # Square root of Area for Rural
+  )
+))
+```
+
+
 
 ```{r}
 
@@ -163,12 +178,6 @@ predicted_prices <- predicted_prices_scaled * preprocess$std[["Price"]] + prepro
 
 
 
-
-
-# Train the Random Forest model
-rf_model <- randomForest(Price ~ ., data = train_data, ntree = 500, mtry = 3)
-# Evaluate the model
-predicted_prices <- predict(rf_model, test_data)
 
 
 
@@ -262,21 +271,28 @@ print(paste("MAE:", mae))
 ```{r}
 print(paste("R-squared:", r_squared))
 ```
-# The Random Forest model produced very week results, with a high MSE on the housing price dataset even though we used only the numerical columns, it probably the data is from known surce and collected carfully also it very small data set.
+The Random Forest model produced very week results, with a high MSE on the housing price dataset even though we used only the numerical columns, it probably the data is from known surce and collected carfully also it very small data set.
 
 
 ##  Neural Network Model:
 ```{r}
 
 
-set.seed(123)
-nnet_model <- train(Price ~., 
-                    data = train_data, 
-                    method = "nnet", 
-                    trControl = trainControl(method = "cv", number = 10),
-                    trace=0)
+nnet_grid <- expand.grid(
+  size = c(1, 3, 5, 7, 9),
+  decay = c(0, 0.1, 0.01, 0.001)
+)
 
-nnet_model
+nnet_model <- train(
+  Price ~ ., 
+  data = train_data, 
+  method = "nnet", 
+  trControl = trainControl(method = "cv", number = 10),
+  preProcess = c("center", "scale"),
+  tuneGrid = nnet_grid,
+  trace = FALSE
+)
+
 
 
 
@@ -290,6 +306,30 @@ nnet_model
 print(nnet_model)
 
 ```
+
+```{r}
+# Make predictions on the test data
+predictions <- predict(nnet_model, newdata = test_data)
+
+# Calculate residuals
+residuals <- predictions - test_data$Price
+
+# Calculate MSE
+mse <- mean(residuals^2)
+
+# Calculate RMSE
+rmse <- sqrt(mse)
+
+# Calculate MAE
+mae <- mean(abs(residuals))
+
+
+cat("Mean Squared Error (MSE):", mse, "\n")
+cat("Root Mean Squared Error (RMSE):", rmse, "\n")
+cat("Mean Absolute Error (MAE):", mae)
+
+```
+
 # The Neutral network model produced very week results, with a high MAE on the housing price dataset even though we used only the numerical columns, it probably the data is not image data
 
 
