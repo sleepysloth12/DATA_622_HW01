@@ -29,34 +29,64 @@ library(car)
 library(rpart)
 library(rpart.plot)
 library(dplyr)
+library(ggplot2)
 ```
 
 Our first step is to load in the data and check for missing values.
-
 ```{r}
-data <- read.csv("C:/Users/Chafiaa/Downloads/House Price Prediction Dataset.csv")
+data <- read.csv(url("https://raw.githubusercontent.com/sleepysloth12/DATA_622_HW01/refs/heads/main/homework4/House%20Price%20Prediction%20Dataset.csv"))
 any(is.na(data))
 ```
-
-## Since there are no missing values we can skip the imputation step and go straight to transformations. Firstly we want to convert the column condition to numeric. Since it is an ordinal column where there is a ranking to the conditions we convert them to 0-3 instead of using dummies.
+Next we want to remove the ID column as that is unnessecary for prediction
+```{r}
+data <- data %>% 
+  select(-Id) 
+```
+Since there are no missing values we can skip the imputation step and go straight to transformations. Firstly we want to convert the column condition to numeric. Since it is an ordinal column where there is a ranking to the conditions we convert them to 0-3 instead of using dummies.
 ```{r}
 # Convert Condition to numeric
 data$Condition <- as.numeric(factor(data$Condition, levels = c("Poor", "Fair", "Good", "Excellent"))) - 1
 ```
-## Next we convert Garage from a Yes/No categorical column to a 0/1 column.
+Next we convert Garage from a Yes/No categorical column to a 0/1 column.
 ```{r}
-data$Garage <- factor(ifelse(data$Garage == "Yes", 1, 0))
+data$Garage <- ifelse(data$Garage == "Yes", 1, 0)
 ```
-##  Lastly we want to one hot encode the location column as it is not ordinal and view the new dataset.
+Lastly we want to one hot encode the location column as it is not ordinal and view the new dataset.
 ```{r}
 data <- dummy_cols(data, select_columns = "Location", remove_first_dummy = TRUE, remove_selected_columns = TRUE)
 head(data)
 ```
-
-
+## Correlation Matrix
+Before building the models, we want to run a correlation matrix to look for multicolinearity
 ```{r}
-summary(data)
+predictors <- data %>% 
+  select(-Price) 
+cor_matrix <- cor(predictors)
+high_cor <- findCorrelation(cor_matrix, cutoff = 0.7, verbose = TRUE)
+cat("Highly correlated variables:", paste(names(predictors)[high_cor], collapse = ", "), "\n")
 ```
+Initial findings show no highly correlated variables.
+```{r}
+corrplot(cor_matrix, method = "color", type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+```
+And the maxtrix confirms little to no correlation between different variables, there is no multicolinearity.
+### Principal Component Analysis
+Conducting a PCA to determine the important components.
+```{r}
+pca_result <- prcomp(predictors, scale. = TRUE)
+summary(pca_result)
+```
+```{r}
+plot(cumsum(pca_result$sdev^2 / sum(pca_result$sdev^2)), 
+     type = "b", 
+     xlab = "Number of Components", 
+     ylab = "Cumulative Proportion of Variance Explained",
+     main = "PCA Cumulative Variance Explained")
+```
+Our first component explains about 13% which us a good amount, but the more interesting part is that every component until the 9th compnent explains at least 9% with only the 10th component explaining a small by comparison 4%. 
+What this suggest is that every column in the dataset is important and that we should not try to simplify the model as there are no components that explain an insignificant amount and all of the varibles contain unique information in them. 
+
 
 
 ```{r}
@@ -87,14 +117,59 @@ library(randomForest)
 
 set.seed(123)
 training <- sample(1:nrow(data), 0.8 * nrow(data))
-train_data <- data1[training, ]
-test_data <- data1[-training, ]
+train_data <- data[training, ]
+test_data <- data[-training, ]
+```
+
+
+Scaling the data to produce better results
+```{r}
+preprocess <- preProcess(train_data, method = c("center", "scale"))
+train_data_scaled <- predict(preprocess, train_data)
+test_data_scaled <- predict(preprocess, test_data)
+```
+
+Training the model using 5 fold cross validation and a tuning grid to find the best mtry value.
+```{r}
+set.seed(123)
+tune_grid <- expand.grid(mtry = c(2, 3, 4, 5))
+control <- trainControl(method = "cv", number = 5) 
+
+rf_model <- train(
+  Price ~ ., 
+  data = train_data_scaled, 
+  method = "rf", 
+  trControl = control, 
+  tuneGrid = tune_grid, 
+  ntree = 200 
+)
+```
+
+
+
+```{r}
+print(rf_model$bestTune)
+```
+
+```{r}
+var_importance <- varImp(rf_model, scale = FALSE)
+print(var_importance)
+```
+```{r}
+predicted_prices_scaled <- predict(rf_model, newdata = test_data_scaled)
+
+predicted_prices <- predicted_prices_scaled * preprocess$std[["Price"]] + preprocess$mean[["Price"]]
+```
+
+
+
+
 
 # Train the Random Forest model
 rf_model <- randomForest(Price ~ ., data = train_data, ntree = 500, mtry = 3)
 # Evaluate the model
 predicted_prices <- predict(rf_model, test_data)
-```
+
 
 
 
@@ -103,25 +178,32 @@ predicted_prices <- predict(rf_model, test_data)
 ```{r}
 
 
-# importance of each variable.
+# importance of each variable plotted
+var_importance_df <- data.frame(
+  variable = rownames(var_importance$importance),
+  importance = var_importance$importance[, 1]
+)
+
+var_importance_df <- arrange(var_importance_df, desc(importance))
+var_importance_df$variable <- factor(var_importance_df$variable, levels = var_importance_df$variable)
 
 
-library(ggplot2)
-var_importance <- data_frame(variable=setdiff(colnames(train_data), "Price"),
-                             importance=as.vector(importance(rf_model)))
-var_importance <- arrange(var_importance, desc(importance))
-var_importance$variable <- factor(var_importance$variable, levels=var_importance$variable)
+p <- ggplot(var_importance_df, aes(x = variable, weight = importance, fill = variable)) +
+  geom_bar() +
+  ggtitle("Variable Importance from Random Forest Fit") +
+  xlab("Demographic Attribute") +
+  ylab("Variable Importance (Mean Decrease in Gini Index)") +
+  scale_fill_discrete(name = "Variable Name") +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_text(size = 12),
+    axis.title = element_text(size = 16),
+    plot.title = element_text(size = 18),
+    legend.title = element_text(size = 16),
+    legend.text = element_text(size = 12)
+  )
 
-p <- ggplot(var_importance, aes(x=variable, weight=importance, fill=variable))
-p <- p + geom_bar() + ggtitle("Variable Importance from Random Forest Fit")
-p <- p + xlab("Demographic Attribute") + ylab("Variable Importance (Mean Decrease in Gini Index)")
-p <- p + scale_fill_discrete(name="Variable Name")
-p + theme(axis.text.x=element_blank(),
-          axis.text.y=element_text(size=12),
-          axis.title=element_text(size=16),
-          plot.title=element_text(size=18),
-          legend.title=element_text(size=16),
-          legend.text=element_text(size=12))
+print(p)
 
 ```
 
