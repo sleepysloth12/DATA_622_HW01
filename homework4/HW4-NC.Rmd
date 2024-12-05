@@ -1,0 +1,350 @@
+---
+title: "Data 622 Homework 4"
+author: "Brandon Cunningham, Jean Jimenez, Chafiaa Nadour, Shri Tripathi"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: 
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
+---
+
+# Introduction: For this assignment we will be using a kaggle dataset on houses to predict house prices using features of the house. [Link to Dataset](https://www.kaggle.com/datasets/zafarali27/house-price-prediction-dataset?resource=download). For prediction we will be using a random forest model and a nueral network, giving both the same data to work with and seeing which is better at this specific task.
+
+```{r}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggcorrplot)
+library(GGally)
+library(VIM)
+library(gridExtra)
+library(caret)
+library(leaps)
+library(boot)
+library(summarytools)
+library(corrplot)
+library(fastDummies)
+library(car)
+library(rpart)
+library(rpart.plot)
+library(dplyr)
+library(ggplot2)
+```
+
+Our first step is to load in the data and check for missing values.
+```{r}
+data <- read.csv("C:/Users/Chafiaa/Downloads/House Price Prediction Dataset.csv")
+any(is.na(data))
+```
+Next we want to remove the ID column as that is unnessecary for prediction
+```{r}
+data <- data %>% 
+  select(-Id) 
+```
+Since there are no missing values we can skip the imputation step and go straight to transformations. Firstly we want to convert the column condition to numeric. Since it is an ordinal column where there is a ranking to the conditions we convert them to 0-3 instead of using dummies.
+```{r}
+# Convert Condition to numeric
+data$Condition <- as.numeric(factor(data$Condition, levels = c("Poor", "Fair", "Good", "Excellent"))) - 1
+```
+Next we convert Garage from a Yes/No categorical column to a 0/1 column.
+```{r}
+data$Garage <- ifelse(data$Garage == "Yes", 1, 0)
+```
+Lastly we want to one hot encode the location column as it is not ordinal and view the new dataset.
+```{r}
+data <- dummy_cols(data, select_columns = "Location", remove_first_dummy = TRUE, remove_selected_columns = TRUE)
+head(data)
+```
+## Correlation Matrix
+Before building the models, we want to run a correlation matrix to look for multicolinearity
+```{r}
+predictors <- data %>% 
+  select(-Price) 
+cor_matrix <- cor(predictors)
+high_cor <- findCorrelation(cor_matrix, cutoff = 0.7, verbose = TRUE)
+cat("Highly correlated variables:", paste(names(predictors)[high_cor], collapse = ", "), "\n")
+```
+Initial findings show no highly correlated variables.
+```{r}
+corrplot(cor_matrix, method = "color", type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+```
+And the maxtrix confirms little to no correlation between different variables, there is no multicolinearity.
+### Principal Component Analysis
+Conducting a PCA to determine the important components.
+```{r}
+pca_result <- prcomp(predictors, scale. = TRUE)
+summary(pca_result)
+```
+```{r}
+plot(cumsum(pca_result$sdev^2 / sum(pca_result$sdev^2)), 
+     type = "b", 
+     xlab = "Number of Components", 
+     ylab = "Cumulative Proportion of Variance Explained",
+     main = "PCA Cumulative Variance Explained")
+```
+Our first component explains about 13% which us a good amount, but the more interesting part is that every component until the 9th compnent explains at least 9% with only the 10th component explaining a small by comparison 4%. 
+What this suggest is that every column in the dataset is important and that we should not try to simplify the model as there are no components that explain an insignificant amount and all of the varibles contain unique information in them. 
+
+
+Here we are adding an adjusted area column that squares area in urban environments and squareroot's it in suburban ones because in cities space is much more of a luxury than in a rural or suburban area.
+
+```{r}
+data$AdjustedArea <- with(data, ifelse(
+  Location_Urban == 1,       # Condition for Urban
+  Area^2,                    # Square the Area for Urban
+  ifelse(
+    Location_Suburban == 1,     # Condition for Suburban
+    Area,                    # Leave Area unchanged for Suburban
+    sqrt(Area)               # Square root of Area for Rural
+  )
+))
+```
+
+
+
+```{r}
+
+data1=data %>% select(where(is.numeric))
+head(data1)
+
+```
+
+
+```{r}
+correlations <- cor(na.omit(data1[,-1]))
+
+corr <- apply(correlations, 1, function(x) sum(x > 0.3 | x < -0.3) > 1)
+correlations<- correlations[corr ,corr ]
+corrplot(correlations, method="square")
+```
+
+
+
+
+
+##  RF model:
+```{r}
+library(randomForest)
+
+# Splitting the dataset into training and testing:
+
+set.seed(123)
+training <- sample(1:nrow(data), 0.8 * nrow(data))
+train_data <- data[training, ]
+test_data <- data[-training, ]
+```
+
+
+Scaling the data to produce better results
+```{r}
+preprocess <- preProcess(train_data, method = c("center", "scale"))
+train_data_scaled <- predict(preprocess, train_data)
+test_data_scaled <- predict(preprocess, test_data)
+```
+
+Training the model using 5 fold cross validation and a tuning grid to find the best mtry value.
+```{r}
+set.seed(123)
+tune_grid <- expand.grid(mtry = c(2, 3, 4, 5))
+control <- trainControl(method = "cv", number = 5) 
+
+rf_model <- train(
+  Price ~ ., 
+  data = train_data_scaled, 
+  method = "rf", 
+  trControl = control, 
+  tuneGrid = tune_grid, 
+  ntree = 200 
+)
+```
+
+
+
+```{r}
+print(rf_model$bestTune)
+```
+
+```{r}
+var_importance <- varImp(rf_model, scale = FALSE)
+print(var_importance)
+```
+```{r}
+predicted_prices_scaled <- predict(rf_model, newdata = test_data_scaled)
+
+predicted_prices <- predicted_prices_scaled * preprocess$std[["Price"]] + preprocess$mean[["Price"]]
+```
+
+
+
+
+
+
+
+
+
+```{r}
+
+
+# importance of each variable plotted
+var_importance_df <- data.frame(
+  variable = rownames(var_importance$importance),
+  importance = var_importance$importance[, 1]
+)
+
+var_importance_df <- arrange(var_importance_df, desc(importance))
+var_importance_df$variable <- factor(var_importance_df$variable, levels = var_importance_df$variable)
+
+
+p <- ggplot(var_importance_df, aes(x = variable, weight = importance, fill = variable)) +
+  geom_bar() +
+  ggtitle("Variable Importance from Random Forest Fit") +
+  xlab("Demographic Attribute") +
+  ylab("Variable Importance (Mean Decrease in Gini Index)") +
+  scale_fill_discrete(name = "Variable Name") +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_text(size = 12),
+    axis.title = element_text(size = 16),
+    plot.title = element_text(size = 18),
+    legend.title = element_text(size = 16),
+    legend.text = element_text(size = 12)
+  )
+
+print(p)
+
+```
+
+
+```{r}
+
+ggplot(data, ylab = "Sale Price  (USD)", aes(x=Price)) + 
+    geom_histogram(bins=30, fill="red") +
+    ggtitle("Figure 3: Distribution of Sale Prices After randomForest Imputation") 
+
+```
+
+
+```{r}
+print(rf_model)
+
+
+```
+
+
+```{r}
+
+# predicted_prices are the randomForest predictions and test_data contains the real prices
+actual_prices <- test_data$Price
+
+# Calculate mean squared error 
+mse <- mean((predicted_prices - actual_prices)^2)
+
+# Calculate root mean squared error
+rmse <- sqrt(mse)
+
+# Calculate mean absolute error
+mae <- mean(abs(predicted_prices - actual_prices))
+
+# Calculate r-squared
+rss <- sum((predicted_prices - actual_prices)^2)
+tss <- sum((actual_prices - mean(actual_prices))^2)
+r_squared <- 1 - rss/tss
+
+# Print the metrics
+print(paste("MSE:", mse))
+
+```
+
+
+```{r}
+print(paste("RMSE:", rmse))
+```
+
+
+```{r}
+print(paste("MAE:", mae))
+```
+
+
+```{r}
+print(paste("R-squared:", r_squared))
+```
+The Random Forest model produced very week results, with a high MSE on the housing price dataset even though we used only the numerical columns, it probably the data is from known source and collected carefully also it very small data set.
+
+
+##  Neural Network Model:
+```{r}
+
+
+nnet_grid <- expand.grid(
+  size = c(1, 3, 5, 7, 9),
+  decay = c(0, 0.1, 0.01, 0.001)
+)
+
+nnet_model <- train(
+  Price ~ ., 
+  data = train_data, 
+  method = "nnet", 
+  trControl = trainControl(method = "cv", number = 10),
+  preProcess = c("center", "scale"),
+  tuneGrid = nnet_grid,
+  trace = FALSE
+)
+
+
+
+
+
+
+```
+
+
+```{r}
+
+print(nnet_model)
+
+```
+
+```{r}
+# Make predictions on the test data
+predictions <- predict(nnet_model, newdata = test_data)
+
+# Calculate residuals
+residuals <- predictions - test_data$Price
+
+# Calculate MSE
+mse <- mean(residuals^2)
+
+# Calculate RMSE
+rmse <- sqrt(mse)
+
+# Calculate MAE
+mae <- mean(abs(residuals))
+
+
+cat("Mean Squared Error (MSE):", mse, "\n")
+cat("Root Mean Squared Error (RMSE):", rmse, "\n")
+cat("Mean Absolute Error (MAE):", mae)
+```
+
+
+# The Neutral network model produced very weak results, with a high MAE on the housing price dataset even though we used only the numerical columns, it probably because the data was not an image data.
+
+
+##  Conclusion:
+
+##  The goal of this analysis was to predict the house price based on the area, year the house was built, the number of bedrooms, number of bathrooms...etc.
+
+
+##  The response variable was Price, and predictors variables were analyzed to determine their relationships with the response variable.
+
+
+## The correlation plot confirmed the relationships between Adjusetd area and location_ Urban is high and positive relationship.
+##  The analysis was conducted using a Neural Network and  Random Forest models. First, the data was split into a training and testing set (80:20 split). A Neural Network model was then trained using the previously mentioned prediction features and cross-fold validation (k=10). The model had  MSE 337195837560.  Next, a Random Forest model was trained using the same variables and cross-fold validation. The model significantly outperformed the Neural Network model, with MSE 80027576014.6316 , the MSE was high for both model wich indicates that both models performed poorly.
+
+##  The most important features for the Random Forest model were Area, AdjustedArea, YearBuilt, Bedrooms & Bethrooms.
+
+
+##  Based on the results of this analysis, House Price is hard to predict because the housing market is influenced by other socioeconomic factors that our data is missing such as Covid-19 pandemic where we witness skyrocketing  housing prices in USA, also the inflation and the high interest rate play a big role on determining the house price.
