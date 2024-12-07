@@ -9,7 +9,9 @@ output:
     df_print: paged
 ---
 
-# Introduction: For this assignment we will be using a kaggle dataset on houses to predict house prices using features of the house. [Link to Dataset](https://www.kaggle.com/datasets/zafarali27/house-price-prediction-dataset?resource=download). For prediction we will be using a random forest model and a nueral network, giving both the same data to work with and seeing which is better at this specific task.
+# Introduction: 
+
+For this assignment we will be using a kaggle dataset on houses to predict house prices using features of the house. [Link to Dataset](https://www.kaggle.com/datasets/zafarali27/house-price-prediction-dataset?resource=download). For prediction we will be using a random forest model and a nueral network, giving both the same data to work with and seeing which is better at this specific task.
 
 ```{r}
 
@@ -31,6 +33,8 @@ library(rpart.plot)
 library(dplyr)
 library(ggplot2)
 ```
+
+## EDA
 
 Our first step is to load in the data and check for missing values.
 ```{r}
@@ -56,7 +60,7 @@ Lastly we want to one hot encode the location column as it is not ordinal and vi
 data <- dummy_cols(data, select_columns = "Location", remove_first_dummy = TRUE, remove_selected_columns = TRUE)
 head(data)
 ```
-## Correlation Matrix
+### Correlation Matrix
 Before building the models, we want to run a correlation matrix to look for multicolinearity
 ```{r}
 predictors <- data %>% 
@@ -122,7 +126,7 @@ corrplot(correlations, method="square")
 
 
 
-
+# Model Building
 
 ##  RF model:
 ```{r}
@@ -333,7 +337,15 @@ cat("Mean Absolute Error (MAE):", mae)
 The Neutral network model produced very week results, with a high MAE on the housing price dataset even though we used only the numerical columns, it probably the data is not image data
 
 
-##  Conclusion:
+# Discussion
+
+Based on the analysis, both the Random Forest and Neural Network models performed poorly in predicting house prices, but with notable differences in their performance. The Random Forest model achieved an MSE of approximately 80.03 billion (RMSE ≈ $282,891) and MAE of $239,435, while the Neural Network model performed significantly worse with an MSE of 337.2 billion (RMSE ≈ $580,686) and MAE of $511,043. The Random Forest model's better performance might be attributed to its ability to capture non-linear relationships and handle the categorical variables (location) more effectively. This is evidenced by the variable importance plot, which shows Area, AdjustedArea, and YearBuilt as the most influential features.
+
+However, both models' poor performance suggests that the dataset may be insufficient for accurate house price prediction. The high error rates and the Random Forest's negative R-squared value (-0.053) indicate that the models performed worse than simply using the mean price as a predictor. This underperformance likely stems from missing crucial factors that influence housing prices, such as neighborhood demographics, school quality, economic indicators, and market conditions during the COVID-19 pandemic, as noted in the conclusion. The Neural Network's particularly poor performance might be due to the relatively small dataset size, as neural networks typically require large amounts of data to learn complex patterns effectively.
+
+This comparison suggests that while Random Forest might be better suited for this specific housing dataset due to its ability to handle mixed data types and capture feature interactions, neither model provided practically useful predictions, highlighting the need for additional relevant features and possibly more sophisticated modeling approaches for accurate house price prediction.
+
+#  Conclusion:
 The goal of this analysis was to predict the house price based on the area, year the house was built, the number of bedrooms, number of bathrooms...etc.
 The response variable was Price, and predictors variables were analyzed to determine their relationships with the response variable.
 The correlation plot confirmed the relationships between Adjusetd area and location_ Urban is high and positive relationship.
